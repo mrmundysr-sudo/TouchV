@@ -236,7 +236,7 @@ public class MainActivity extends Activity {
         discardPile.setId(R.id.discard_pile);
         discardPile.setBackgroundResource(R.drawable.card_back);
         discardPile.addView(centreLabel("DISC"), match());
-        add(screenTable, discardPile, DRAW_BOX);
+        add(screenTable, discardPile, DISC_BOX);
         discardPile.setOnClickListener(v -> onDiscardTapped());
 
         // Mark 4: your score bubble only. No opponent clouds this pass.
@@ -581,12 +581,26 @@ public class MainActivity extends Activity {
     }
 
     private void addRaisedCard(Card card, int handIndex) {
+        int cardH = fanRowHeight();
+        int cardW = Math.max(dp(1), (int) (cardH * 0.72f));
+
         FrameLayout overlay = new FrameLayout(this);
         overlay.setTag("raised_card");
         View cv = buildCardView(card);
         cv.setOnClickListener(v -> onHandCardTapped(handIndex));
         overlay.addView(cv, match());
-        fanBox.add(overlay, 0.430f, -0.06f, 0.140f, 0.280f);
+
+        int fanWidth = fanBox.getWidth();
+        int fanHeight = fanBox.getHeight();
+        if (fanWidth <= 0) {
+            fanWidth = Math.round(getResources().getDisplayMetrics().widthPixels * FAN_BOX[2]);
+        }
+        if (fanHeight <= 0) {
+            fanHeight = Math.round(getResources().getDisplayMetrics().heightPixels * FAN_BOX[3]);
+        }
+        float fw = (float) cardW / fanWidth;
+        float fh = (float) cardH / fanHeight;
+        fanBox.add(overlay, 0.5f - fw / 2f, -0.06f, fw, fh);
     }
 
     private void addFanCards(LinearLayout row, List<Card> hand, int from, int to, int offset) {
