@@ -190,6 +190,14 @@ public class MainActivity extends Activity {
         add(screenTitle, btnOpp2, new float[]{TITLE_BOX[0] + w, TITLE_BOX[1], w, TITLE_BOX[3]});
         add(screenTitle, btnOpp3, new float[]{TITLE_BOX[0] + 2f * w, TITLE_BOX[1], w, TITLE_BOX[3]});
 
+        for (int i = 0; i < 3; i++) {
+            TextView choice = chrome(0);
+            choice.setText(String.valueOf(i + 1));
+            choice.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22);
+            choice.setGravity(Gravity.CENTER);
+            add(screenTitle, choice, new float[]{TITLE_BOX[0] + i * w, TITLE_BOX[1], w, TITLE_BOX[3]});
+        }
+
         btnOpp1.setOnClickListener(v -> startGame(1));
         btnOpp2.setOnClickListener(v -> startGame(2));
         btnOpp3.setOnClickListener(v -> startGame(3));
@@ -228,7 +236,7 @@ public class MainActivity extends Activity {
         discardPile.setId(R.id.discard_pile);
         discardPile.setBackgroundResource(R.drawable.card_back);
         discardPile.addView(centreLabel("DISC"), match());
-        add(screenTable, discardPile, DISC_BOX);
+        add(screenTable, discardPile, DRAW_BOX);
         discardPile.setOnClickListener(v -> onDiscardTapped());
 
         // Mark 4: your score bubble only. No opponent clouds this pass.
@@ -346,11 +354,9 @@ public class MainActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         overlaySort.add(plate(R.drawable.bg_sort), 0f, 0f, 1f, 1f);
 
-        LinearLayout row = new LinearLayout(this);
-        row.setTag("sort_row");
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER);
-        overlaySort.add(row, SORT_CARDS[0], SORT_CARDS[1], SORT_CARDS[2], SORT_CARDS[3]);
+        PlateLayout grid = new PlateLayout(this);
+        grid.setTag("sort_grid");
+        overlaySort.add(grid, 0f, 0f, 1f, 1f);
 
         TextView hint = new TextView(this);
         hint.setTextColor(Color.WHITE);
@@ -526,8 +532,7 @@ public class MainActivity extends Activity {
                 top == null ? R.drawable.card_back : faceDrawable(top));
 
         Player h = engine.human();
-        cloudPlayer.setText("You  " + h.cumulativeScore
-                + (h.roundScore != 0 ? " (" + h.roundScore + ")" : ""));
+        cloudPlayer.setText("Wild  " + engine.wildLabel());
 
         renderMelds(meldPlayer, engine.meldsFor(0));
         renderFan();
@@ -864,28 +869,27 @@ public class MainActivity extends Activity {
     }
 
     private void renderSortOverlay() {
-        LinearLayout row = (LinearLayout) overlaySort.findViewWithTag("sort_row");
-        row.removeAllViews();
+        PlateLayout grid = (PlateLayout) overlaySort.findViewWithTag("sort_grid");
+        grid.removeAllViews();
 
         List<Card> hand = engine.handOf(0);
-        int cardH = Math.max(dp(50), (int) (getResources().getDisplayMetrics().heightPixels
-                * SORT_CARDS[3] * 0.42f));
-        int cardW = (int) (cardH * 0.72f);
-        int avail = Math.max(cardW, (int) (getResources().getDisplayMetrics().widthPixels
-                * SORT_CARDS[2]));
-        int n = hand.size();
-        int shift = n > 1
-                ? Math.min((int) (cardW * 0.7f), Math.max(1, (avail - cardW) / (n - 1)))
-                : cardW;
-
-        for (int i = 0; i < n; i++) {
-            final int idx = i;
-            View cv = buildCardView(hand.get(i));
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(cardW, cardH);
-            if (i > 0) lp.leftMargin = -(cardW - shift);
-            if (idx == sortSelected) cv.setTranslationY(-dp(16));
-            cv.setOnClickListener(v -> onSortTap(idx));
-            row.addView(cv, lp);
+        final float slotW = 0.145f, slotH = 0.095f;
+        for (int slot = 0; slot < 13; slot++) {
+            boolean right = slot < 7;
+            int index = right ? slot : slot - 7;
+            float x = right ? 0.548f : 0.307f;
+            float y = (right ? 0.150f : 0.200f) + index * 0.100f;
+            FrameLayout cell = new FrameLayout(this);
+            cell.setBackgroundResource(R.drawable.slot_plate);
+            if (slot < hand.size()) {
+                final int idx = slot;
+                View cv = buildCardView(hand.get(idx));
+                cv.setRotation(90f);
+                if (idx == sortSelected) cv.setTranslationY(-dp(10));
+                cv.setOnClickListener(v -> onSortTap(idx));
+                cell.addView(cv, match());
+            }
+            grid.add(cell, x, y, slotW, slotH);
         }
     }
 
