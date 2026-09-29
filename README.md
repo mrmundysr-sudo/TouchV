@@ -121,11 +121,11 @@ All of these are files in `res/drawable/`. Swap the file, keep the name.
 |----------|-------|
 | `btn_play_again` | transparent PNG, shared by You Win and Try Again |
 
-### Card art (placeholders, safe to replace)
+### Card art (locked drawable names)
 
 | Drawable | Notes |
 |----------|-------|
-| `card_back` | facedown draw pile and fan backs |
+| `card_back` | official purple/gold TouchV! card back for facedown cards |
 | `card_face_green` | clubs |
 | `card_face_pink` | hearts |
 | `card_face_purple` | fleurs |
@@ -133,10 +133,17 @@ All of these are files in `res/drawable/`. Swap the file, keep the name.
 | `card_face_gold` | diamonds |
 | `card_face_joker` | joker |
 
-Card faces are placeholder `layer-list` XML (black border, colour field, cream
-oval); the code draws the centre pip and corner pips. Replace with one bitmap
-per suit, or a full named face set, keeping the names. Keep the aspect near 5:7
-so the fan reads.
+`card_back` is the approved TouchV! artwork. Card faces remain placeholder
+`layer-list` XML (black border, colour field, cream oval); the code draws the
+centre pip and corner pips. Replace faces with one bitmap per suit, or a full
+named face set, keeping the names. Keep card art near 5:7 so it reads in the
+fan.
+
+### Sort-slot backing
+
+| Drawable | Notes |
+|----------|-------|
+| `sort_slot_back` | landscape-readable TouchV! backing for each of the 13 fixed sort slots; rendered beneath face cards. Keep the portrait drawable name and aspect ratio when replacing it. |
 
 ### Chrome / seats / icon (placeholders)
 
@@ -180,7 +187,8 @@ Drawables:
 ```
 bg_title      bg_table      bg_table_1    bg_table_2    bg_table_3
 bg_sort       bg_score_card bg_you_win    bg_try_again  btn_play_again
-card_back     card_face_green card_face_pink card_face_purple
+card_back     sort_slot_back
+card_face_green card_face_pink card_face_purple
 card_face_orange card_face_gold card_face_joker
 opp_boy       opp_cat       opp_girl      icon_fleur
 btn_plate     cloud_plate   slot_plate

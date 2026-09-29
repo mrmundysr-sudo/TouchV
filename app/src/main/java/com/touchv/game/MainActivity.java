@@ -880,7 +880,9 @@ public class MainActivity extends Activity {
             float x = right ? 0.548f : 0.307f;
             float y = (right ? 0.150f : 0.200f) + index * 0.100f;
             FrameLayout cell = new FrameLayout(this);
-            cell.setBackgroundResource(R.drawable.slot_plate);
+            // Keep the branded slot back underneath the rotated face card so
+            // its TouchV! frame peeks out above and below occupied slots.
+            cell.setBackgroundResource(R.drawable.sort_slot_back);
             if (slot < hand.size()) {
                 final int idx = slot;
                 View cv = buildCardView(hand.get(idx));

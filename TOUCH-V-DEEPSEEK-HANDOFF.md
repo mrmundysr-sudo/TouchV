@@ -128,7 +128,9 @@ Deck construction (must be exact):
 
 Card face slots (placeholder rects): black border, color field, cream oval, center pip, corner pips.  
 Jokers: `@drawable/card_face_joker`.  
-Back: `@drawable/card_back` (later: 5-point chrome fleur).
+Back: `@drawable/card_back` (official purple/gold TouchV! card-back artwork).
+Sort placeholders: `@drawable/sort_slot_back` (landscape-readable TouchV!
+artwork beneath the rotated face cards; keep this a separate swappable asset).
 
 ---
 
@@ -271,6 +273,7 @@ Later the player may group by hand; that UI must call the same validator. Auto-d
 R.drawable.bg_title
 R.drawable.bg_table
 R.drawable.card_back
+R.drawable.sort_slot_back  // fixed sort-slot backing, behind face cards
 R.drawable.card_face_green     // clubs
 R.drawable.card_face_pink      // hearts
 R.drawable.card_face_purple    // fleurs
