@@ -1,11 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Placeholder Joker face: black border, slate field, cream oval with a gold pip. -->
+<!-- Premium TouchV joker face. Rank and gold star are drawn by code. Keep resource name stable. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item><shape android:shape="rectangle"><solid android:color="#111111" /><corners android:radius="6dp" /></shape></item>
-    <item android:left="3dp" android:top="3dp" android:right="3dp" android:bottom="3dp">
-        <shape android:shape="rectangle"><solid android:color="#455A64" /><corners android:radius="4dp" /></shape></item>
-    <item android:left="10dp" android:top="16dp" android:right="10dp" android:bottom="16dp">
-        <shape android:shape="oval"><solid android:color="#FBF3DC" /><stroke android:width="1dp" android:color="#111111" /></shape></item>
-    <item android:left="24dp" android:top="34dp" android:right="24dp" android:bottom="34dp">
-        <shape android:shape="oval"><solid android:color="#F9A825" /></shape></item>
+    <item><shape android:shape="rectangle"><gradient android:angle="270" android:startColor="#292522" android:centerColor="#0B0A09" android:endColor="#020202" /><corners android:radius="8dp" /></shape></item>
+    <item android:left="1dp" android:top="1dp" android:right="1dp" android:bottom="1dp"><shape android:shape="rectangle"><solid android:color="#E0B34D" /><corners android:radius="7dp" /></shape></item>
+    <item android:left="3dp" android:top="3dp" android:right="3dp" android:bottom="3dp"><shape android:shape="rectangle"><gradient android:angle="270" android:startColor="#36414A" android:centerColor="#182027" android:endColor="#0B1015" /><corners android:radius="6dp" /></shape></item>
+    <item android:left="8dp" android:top="15dp" android:right="8dp" android:bottom="15dp"><shape android:shape="oval"><gradient android:angle="0" android:startColor="#FFF7DD" android:centerColor="#F3E3B7" android:endColor="#D7BA73" /><stroke android:width="1dp" android:color="#C49631" /></shape></item>
+    <item android:left="5dp" android:top="4dp" android:right="5dp" android:bottom="4dp"><shape android:shape="rectangle"><gradient android:angle="270" android:startColor="#55FFFFFF" android:centerColor="#00FFFFFF" android:endColor="#00FFFFFF" /><corners android:radius="6dp" /></shape></item>
 </layer-list>

@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Placeholder card face: black border, color field, cream oval. Code draws the centre pip and corner pips. Swap this file, keep the name. -->
+<!-- Premium small-card face: layered dark edge, gold lip, suit-color gloss, ivory rank panel. Code supplies rank and suit icon. Keep this resource name stable. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item><shape android:shape="rectangle"><solid android:color="#111111" /><corners android:radius="6dp" /></shape></item>
-    <item android:left="3dp" android:top="3dp" android:right="3dp" android:bottom="3dp">
-        <shape android:shape="rectangle"><solid android:color="#EF6C00" /><corners android:radius="4dp" /></shape></item>
-    <item android:left="12dp" android:top="18dp" android:right="12dp" android:bottom="18dp">
-        <shape android:shape="oval"><solid android:color="#FBF3DC" /><stroke android:width="1dp" android:color="#111111" /></shape></item>
+    <item><shape android:shape="rectangle"><gradient android:angle="270" android:startColor="#39343D" android:centerColor="#17151A" android:endColor="#08090D" /><corners android:radius="8dp" /></shape></item>
+    <item android:left="1dp" android:top="1dp" android:right="1dp" android:bottom="1dp"><shape android:shape="rectangle"><solid android:color="#D7AD52" /><corners android:radius="7dp" /></shape></item>
+    <item android:left="3dp" android:top="3dp" android:right="3dp" android:bottom="3dp"><shape android:shape="rectangle"><gradient android:angle="270" android:startColor="#F58A24" android:centerColor="#C94B0A" android:endColor="#612306" /><corners android:radius="6dp" /></shape></item>
+    <item android:left="8dp" android:top="17dp" android:right="8dp" android:bottom="17dp"><shape android:shape="oval"><gradient android:angle="0" android:startColor="#FFF9E9" android:centerColor="#F5E8C8" android:endColor="#E4D1A5" /><stroke android:width="1dp" android:color="#8D3308" /></shape></item>
+    <item android:left="5dp" android:top="4dp" android:right="5dp" android:bottom="4dp"><shape android:shape="rectangle"><gradient android:angle="270" android:startColor="#55FFFFFF" android:centerColor="#00FFFFFF" android:endColor="#00FFFFFF" /><corners android:radius="6dp" /></shape></item>
 </layer-list>
