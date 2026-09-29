@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Handoff section 8 hook IDs. Grok replaces the matching drawables 1:1. -->
+    <item name="screen_title" type="id" />
+    <item name="screen_setup" type="id" />
+    <item name="screen_table" type="id" />
+    <item name="screen_result" type="id" />
+    <item name="overlay_scores" type="id" />
+    <item name="overlay_melds" type="id" />
+    <item name="overlay_sort" type="id" />
+
+    <item name="fan_top_row" type="id" />
+    <item name="fan_bottom_row" type="id" />
+    <item name="discard_pile" type="id" />
+    <item name="draw_pile" type="id" />
+    <item name="cloud_player" type="id" />
+    <item name="cloud_opp_boy" type="id" />
+    <item name="cloud_opp_cat" type="id" />
+    <item name="cloud_opp_girl" type="id" />
+    <item name="meld_player" type="id" />
+    <item name="meld_opp_boy" type="id" />
+    <item name="meld_opp_cat" type="id" />
+    <item name="meld_opp_girl" type="id" />
+    <item name="label_round" type="id" />
+    <item name="label_wild" type="id" />
+
+    <item name="slot_player" type="id" />
+    <item name="slot_opp_boy" type="id" />
+    <item name="slot_opp_cat" type="id" />
+    <item name="slot_opp_girl" type="id" />
+
+    <item name="portrait_player" type="id" />
+    <item name="portrait_opp_boy" type="id" />
+    <item name="portrait_opp_cat" type="id" />
+    <item name="portrait_opp_girl" type="id" />
+    <item name="count_player" type="id" />
+    <item name="count_opp_boy" type="id" />
+    <item name="count_opp_cat" type="id" />
+    <item name="count_opp_girl" type="id" />
+    <item name="bg_title_plate" type="id" />
+
+    <item name="btn_opp_1" type="id" />
+    <item name="btn_opp_2" type="id" />
+    <item name="btn_opp_3" type="id" />
+    <item name="btn_declare_out" type="id" />
+    <item name="btn_lay_melds" type="id" />
+    <item name="btn_park_end" type="id" />
+    <item name="btn_continue" type="id" />
+    <item name="btn_play_again" type="id" />
+
+    <item name="label_status" type="id" />
+    <item name="label_result" type="id" />
+    <item name="label_scores" type="id" />
+</resources>

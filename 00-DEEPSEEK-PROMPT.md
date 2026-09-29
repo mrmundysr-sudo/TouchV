@@ -1,1 +1,1 @@
-
+Build and improve the TouchV! Android project in this repository. Read `TOUCH-V-DEEPSEEK-HANDOFF.md` and `TOUCHV-OFFICIAL-RULES.md` first. Preserve the locked game rules and stable view IDs. The final visual plates are in `app/src/main/res/drawable-nodpi/`; the full source art, markups, and integration notes are in `touchv-deepseek-plates-pack.zip`. Do not replace or invent artwork beyond the requested changes. Build with JDK 17 and Android SDK 34.

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Portrait 720x1600 design reference. Grok can retune these without touching Java. -->
+    <dimen name="card_w">68dp</dimen>
+    <dimen name="card_h">100dp</dimen>
+    <dimen name="card_w_raised">74dp</dimen>
+    <dimen name="card_h_raised">104dp</dimen>
+    <!-- Horizontal shift between overlapping fan cards. -->
+    <dimen name="fan_top_overlap">40dp</dimen>
+    <dimen name="fan_bottom_overlap">40dp</dimen>
+    <dimen name="fan_row_gap">14dp</dimen>
+    <dimen name="fan_bottom_drop">96dp</dimen>
+    <dimen name="fan_lift">16dp</dimen>
+    <dimen name="pile_w">70dp</dimen>
+    <dimen name="pile_h">96dp</dimen>
+    <dimen name="seat_w">120dp</dimen>
+    <dimen name="seat_h">150dp</dimen>
+    <dimen name="cloud_w">116dp</dimen>
+    <dimen name="cloud_h">40dp</dimen>
+    <dimen name="btn_w">220dp</dimen>
+    <dimen name="btn_h">56dp</dimen>
+    <dimen name="pad">12dp</dimen>
+    <dimen name="chrome_text">13sp</dimen>
+    <dimen name="body_text">16sp</dimen>
+    <dimen name="title_text">44sp</dimen>
+</resources>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">TouchV!</string>
+    <string name="app_name_launcher">Touch V!</string>
+
+    <string name="title_continue">CONTINUE</string>
+    <string name="setup_1">1 OPPONENT</string>
+    <string name="setup_2">2 OPPONENTS</string>
+    <string name="setup_3">3 OPPONENTS</string>
+    <string name="declare_out">DECLARE OUT</string>
+    <string name="lay_melds">LAY MELDS</string>
+    <string name="discard_selected">DISCARD SELECTED</string>
+    <string name="continue_label">CONTINUE</string>
+    <string name="play_again">PLAY AGAIN</string>
+    <string name="you_win">YOU WIN</string>
+    <string name="try_again">TRY AGAIN</string>
+    <string name="tiebreak_banner">TIEBREAK ROUND</string>
+</resources>

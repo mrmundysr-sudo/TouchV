@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="felt_green">#1B5E20</color>
+    <color name="panel_dark">#101010</color>
+    <color name="card_green">#2E7D32</color>
+    <color name="card_pink">#D81B60</color>
+    <color name="card_purple">#6A1B9A</color>
+    <color name="card_orange">#EF6C00</color>
+    <color name="card_gold">#F9A825</color>
+    <color name="card_joker">#455A64</color>
+    <color name="card_back">#263238</color>
+    <color name="title_bg">#0D1B2A</color>
+    <color name="btn_bg">#37474F</color>
+    <color name="btn_bg_hi">#00695C</color>
+    <color name="cloud_bg">#263238</color>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+    <color name="slot_boy">#6D1B2E</color>
+    <color name="slot_cat">#8E9BB3</color>
+    <color name="slot_girl">#7A4A2B</color>
+</resources>
