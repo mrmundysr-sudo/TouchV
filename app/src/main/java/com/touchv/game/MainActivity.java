@@ -181,26 +181,38 @@ public class MainActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         screenTitle.add(plate(R.drawable.bg_title), 0f, 0f, 1f, 1f);
 
-        btnOpp1 = hit(R.id.btn_opp_1);
-        btnOpp2 = hit(R.id.btn_opp_2);
-        btnOpp3 = hit(R.id.btn_opp_3);
-
         float w = TITLE_BOX[2] / 3f;
+        btnOpp1 = makeOpponentChoice(R.id.btn_opp_1, 1);
+        btnOpp2 = makeOpponentChoice(R.id.btn_opp_2, 2);
+        btnOpp3 = makeOpponentChoice(R.id.btn_opp_3, 3);
         add(screenTitle, btnOpp1, new float[]{TITLE_BOX[0], TITLE_BOX[1], w, TITLE_BOX[3]});
         add(screenTitle, btnOpp2, new float[]{TITLE_BOX[0] + w, TITLE_BOX[1], w, TITLE_BOX[3]});
         add(screenTitle, btnOpp3, new float[]{TITLE_BOX[0] + 2f * w, TITLE_BOX[1], w, TITLE_BOX[3]});
 
-        for (int i = 0; i < 3; i++) {
-            TextView choice = chrome(0);
-            choice.setText(String.valueOf(i + 1));
-            choice.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22);
-            choice.setGravity(Gravity.CENTER);
-            add(screenTitle, choice, new float[]{TITLE_BOX[0] + i * w, TITLE_BOX[1], w, TITLE_BOX[3]});
-        }
-
         btnOpp1.setOnClickListener(v -> startGame(1));
         btnOpp2.setOnClickListener(v -> startGame(2));
         btnOpp3.setOnClickListener(v -> startGame(3));
+    }
+
+    private View makeOpponentChoice(int id, int count) {
+        PlateLayout choice = new PlateLayout(this);
+        choice.setId(id);
+        choice.setClickable(true);
+        choice.setContentDescription(count + (count == 1 ? " opponent" : " opponents"));
+        float cardW = count == 1 ? 0.54f : (count == 2 ? 0.39f : 0.34f);
+        float cardH = 0.92f;
+        float center = 0.5f;
+        float spread = count == 2 ? 0.22f : 0.20f;
+        for (int i = 0; i < count; i++) {
+            ImageView back = new ImageView(this);
+            back.setImageResource(R.drawable.card_back);
+            back.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            back.setClickable(false);
+            back.setRotation(count == 1 ? 0f : (i - (count - 1) / 2f) * (count == 2 ? 14f : 18f));
+            float x = center - cardW / 2f + (i - (count - 1) / 2f) * spread;
+            choice.add(back, x, (1f - cardH) / 2f, cardW, cardH);
+        }
+        return choice;
     }
 
     // --- table: three plates, same four overlays -----------------------
@@ -541,7 +553,10 @@ public class MainActivity extends Activity {
 
     private void updatePile(FrameLayout pile, Card card, String label, int bg) {
         pile.setBackgroundResource(bg);
-        ((TextView) pile.getChildAt(0)).setText(label);
+        TextView faceLabel = (TextView) pile.getChildAt(0);
+        faceLabel.setText(label);
+        faceLabel.setTextColor(card == null ? Color.WHITE : Color.BLACK);
+        faceLabel.setTypeface(card == null ? Typeface.DEFAULT : Typeface.DEFAULT_BOLD);
     }
 
     private void renderMelds(LinearLayout tray, List<Meld> melds) {
