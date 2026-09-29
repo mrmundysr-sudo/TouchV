@@ -10,62 +10,69 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
 /**
- * TouchV! - single Activity skeleton.
+ * TouchV! - single Activity, eight-plate skin contract.
  *
- * DeepSeek owns rules, game loop, interaction and placeholder UI only.
- * Grok replaces the drawables named in the handoff (section 9) 1:1; the IDs in
- * res/values/ids.xml are the stable hooks. Nothing here is a visual polish pass.
+ * Rules, game loop and interaction live in GameEngine / Meld and are unchanged.
+ * Everything visual here is a file in res/drawable/ referenced by a locked name;
+ * overlays sit on top of the plate bitmaps. Swap the file, keep the name.
  */
 public class MainActivity extends Activity {
+
+    // ------------------------------------------------------------------
+    // Plate mark coordinates as fractions of a 720x1600 portrait plate.
+    // Derived from the supplied marked plates; see README "marks" table.
+    // ------------------------------------------------------------------
+    private static final float[] TITLE_BOX = {0.182f, 0.772f, 0.699f, 0.116f};   // dirt box under wagon
+    private static final float[] FAN_BOX    = {0.066f, 0.660f, 0.872f, 0.210f};  // mark 1: your cards
+    private static final float[] DRAW_BOX   = {0.377f, 0.540f, 0.146f, 0.090f};  // mark 2: draw pile
+    private static final float[] DISC_BOX   = {0.588f, 0.540f, 0.146f, 0.090f};  // mark 3: discard pile
+    private static final float[] BUBBLE_BOX = {0.031f, 0.462f, 0.222f, 0.086f};  // mark 4: your score bubble
+    private static final float[] PA_WIN_BOX = {0.010f, 0.706f, 0.340f, 0.112f};  // you-win mark 1
+    private static final float[] PA_LOSE_BOX= {0.020f, 0.700f, 0.340f, 0.112f};  // try-again mark 1
+    private static final float[] SORT_CARDS = {0.150f, 0.180f, 0.700f, 0.640f};  // sort mark 1
+    private static final float[] SC_GIRL    = {0.120f, 0.028f, 0.215f, 0.092f};  // score-card mark 1
+    private static final float[] SC_BOY     = {0.632f, 0.033f, 0.215f, 0.092f};  // score-card mark 2
+    private static final float[] SC_CAT     = {0.124f, 0.529f, 0.215f, 0.092f};  // score-card mark 3
+    private static final float[] SC_ME      = {0.653f, 0.543f, 0.215f, 0.092f};  // score-card mark 4
 
     private GameEngine engine;
     private final Random rnd = new Random();
 
     private FrameLayout root;
-    private FrameLayout screenTitle, screenTable, screenResult;
-    private LinearLayout screenSetup;
-    private FrameLayout overlayScores, overlaySort, overlayMelds;
+    private PlateLayout screenTitle, screenTable, screenYouWin, screenTryAgain;
+    private PlateLayout overlayScores, overlaySort, overlayMelds;
 
+    private PlateLayout fanBox;
     private LinearLayout fanTop, fanBottom;
-    private FrameLayout handArea;
     private FrameLayout drawPile, discardPile;
-    private TextView labelRound, labelWild, labelStatus, labelResult, labelScores;
-    private LinearLayout meldPlayer, meldBoy, meldCat, meldGirl;
-    private FrameLayout slotBoy, slotCat, slotGirl;
-    private TextView cloudPlayer, cloudBoy, cloudCat, cloudGirl;
-    private TextView countPlayer, countBoy, countCat, countGirl;
-    private Button btnDeclareOut, btnLayMelds, btnParkEnd, btnContinue, btnPlayAgain;
+    private TextView labelRound, labelWild, labelStatus, labelScores;
+    private TextView cloudPlayer;
+    private LinearLayout meldPlayer;
+    private Button btnDeclareOut, btnLayMelds, btnParkEnd;
+    private ImageButton btnPlayAgain;
     private View btnOpp1, btnOpp2, btnOpp3;
+    private TextView scoreGirl, scoreBoy, scoreCat, scorePlayer;
 
     private int selectedHandIndex = -1;
     private int drawnHandIndex = -1;
-    private boolean sortOverlayOpen = false;
     private int sortSelected = -1;
-    private int opponentCount = 1;
 
-    private final GestureDetector fanGesture = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
-        @Override
-        public boolean onFling(MotionEvent e1, MotionEvent e2, float vx, float vy) {
-            if (e1 == null || e2 == null) return false;
-            float dy = e2.getY() - e1.getY();
-            if (dy < -60 && Math.abs(vy) > Math.abs(vx)) {
-                openSortOverlay();
-                return true;
-            }
-            return false;
-        }
-    });
+    private GestureDetector swipeUp;
 
     // ------------------------------------------------------------------
     // Lifecycle
@@ -74,15 +81,45 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        swipeUp = createSwipeUp();
         engine = new GameEngine(rnd);
         buildUi();
         showTitle();
     }
 
+    /** Built after attachBaseContext: a field initialiser would run with no context. */
+    private GestureDetector createSwipeUp() {
+        return new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
+            @Override
+            public boolean onFling(MotionEvent e1, MotionEvent e2, float vx, float vy) {
+                if (e1 == null || e2 == null) return false;
+                return (e2.getY() - e1.getY()) < -70 && Math.abs(vy) >= Math.abs(vx);
+            }
+        });
+    }
+
+    private void goFullscreen() {
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        getWindow().getDecorView().setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                        | View.SYSTEM_UI_FLAG_FULLSCREEN
+                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) goFullscreen();
+    }
+
     @Override
     public void onBackPressed() {
         if (overlaySort.getVisibility() == View.VISIBLE) { closeSortOverlay(); return; }
-        if (overlayMelds.getVisibility() == View.VISIBLE) { hideOverlays(); return; }
+        if (overlayMelds.getVisibility() == View.VISIBLE) { closeMeldOverlay(); return; }
         if (overlayScores.getVisibility() == View.VISIBLE) { return; }
         if (screenTable.getVisibility() == View.VISIBLE) { showTitle(); return; }
         super.onBackPressed();
@@ -93,439 +130,334 @@ public class MainActivity extends Activity {
     // ------------------------------------------------------------------
 
     private void buildUi() {
+        goFullscreen();
         root = new FrameLayout(this);
-        root.setBackgroundResource(R.drawable.bg_table);
+        root.setBackgroundColor(Color.BLACK);
         setContentView(root);
-
         buildTitleScreen();
         buildTableScreen();
-        buildScoreOverlay();
-        buildResultScreen();
+        buildResultPlates();
         buildSortOverlay();
+        buildScoreOverlay();
         buildMeldOverlay();
     }
 
+    /** Full-screen plate bitmap, fitXY, behind every overlay. */
+    private ImageView plate(int drawableId) {
+        ImageView iv = new ImageView(this);
+        iv.setScaleType(ImageView.ScaleType.FIT_XY);
+        iv.setImageResource(drawableId);
+        return iv;
+    }
+
+    /** Invisible tap target with a locked id. */
+    private View hit(int id) {
+        View v = new View(this);
+        v.setId(id);
+        v.setClickable(true);
+        return v;
+    }
+
+    private Button makeButton(int id, String text) {
+        Button b = new Button(this);
+        b.setId(id);
+        b.setText(text);
+        b.setAllCaps(false);
+        b.setBackgroundResource(R.drawable.btn_plate);
+        b.setTextColor(Color.WHITE);
+        return b;
+    }
+
+    private void add(PlateLayout parent, View child, float[] box) {
+        parent.add(child, box[0], box[1], box[2], box[3]);
+    }
+
+    // --- title: the plate IS the 1/2/3 pick ---------------------------
+
     private void buildTitleScreen() {
-        screenTitle = new FrameLayout(this);
-        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
-        root.addView(screenTitle, lp);
-
-        LinearLayout column = new LinearLayout(this);
-        column.setOrientation(LinearLayout.VERTICAL);
-        column.setGravity(Gravity.CENTER_HORIZONTAL);
-        screenTitle.addView(column, new FrameLayout.LayoutParams(
+        screenTitle = new PlateLayout(this);
+        screenTitle.setId(R.id.screen_title);
+        root.addView(screenTitle, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        screenTitle.add(plate(R.drawable.bg_title), 0f, 0f, 1f, 1f);
 
-        View spacerTop = new View(this);
-        column.addView(spacerTop, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+        btnOpp1 = hit(R.id.btn_opp_1);
+        btnOpp2 = hit(R.id.btn_opp_2);
+        btnOpp3 = hit(R.id.btn_opp_3);
 
-        View plate = new View(this);
-        plate.setId(R.id.bg_title_plate);
-        plate.setBackgroundResource(R.drawable.bg_title);
-        LinearLayout.LayoutParams plp = new LinearLayout.LayoutParams(dp(300), dp(360));
-        column.addView(plate, plp);
-
-        TextView title = new TextView(this);
-        title.setText("TouchV!");
-        title.setTextColor(Color.WHITE);
-        title.setTypeface(Typeface.DEFAULT_BOLD);
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 44);
-        title.setGravity(Gravity.CENTER);
-        column.addView(title, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(70)));
-
-        // screen_setup is the opponent pick panel; it lives on the title screen.
-        screenSetup = new LinearLayout(this);
-        screenSetup.setOrientation(LinearLayout.VERTICAL);
-        screenSetup.setGravity(Gravity.CENTER_HORIZONTAL);
-        LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        column.addView(screenSetup, slp);
-
-        TextView prompt = new TextView(this);
-        prompt.setText("CHOOSE OPPONENTS");
-        prompt.setTextColor(Color.WHITE);
-        prompt.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
-        prompt.setGravity(Gravity.CENTER);
-        screenSetup.addView(prompt, rowParams(dp(48)));
-
-        btnOpp1 = makeButton(R.id.btn_opp_1, "1 OPPONENT");
-        btnOpp2 = makeButton(R.id.btn_opp_2, "2 OPPONENTS");
-        btnOpp3 = makeButton(R.id.btn_opp_3, "3 OPPONENTS");
-        screenSetup.addView(btnOpp1, rowParams(dp(60)));
-        screenSetup.addView(btnOpp2, rowParams(dp(60)));
-        screenSetup.addView(btnOpp3, rowParams(dp(60)));
-
-        View spacerBottom = new View(this);
-        column.addView(spacerBottom, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+        float w = TITLE_BOX[2] / 3f;
+        add(screenTitle, btnOpp1, new float[]{TITLE_BOX[0], TITLE_BOX[1], w, TITLE_BOX[3]});
+        add(screenTitle, btnOpp2, new float[]{TITLE_BOX[0] + w, TITLE_BOX[1], w, TITLE_BOX[3]});
+        add(screenTitle, btnOpp3, new float[]{TITLE_BOX[0] + 2f * w, TITLE_BOX[1], w, TITLE_BOX[3]});
 
         btnOpp1.setOnClickListener(v -> startGame(1));
         btnOpp2.setOnClickListener(v -> startGame(2));
         btnOpp3.setOnClickListener(v -> startGame(3));
     }
 
+    // --- table: three plates, same four overlays -----------------------
+
     private void buildTableScreen() {
-        screenTable = new FrameLayout(this);
-        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
-        root.addView(screenTable, lp);
-
-        // Portrait 720x1600 -> ~360x800dp. Lay the table out as weighted vertical
-        // sections so it fits without relying on a landscape pixel budget.
-        LinearLayout column = new LinearLayout(this);
-        column.setOrientation(LinearLayout.VERTICAL);
-        screenTable.addView(column, new FrameLayout.LayoutParams(
+        screenTable = new PlateLayout(this);
+        screenTable.setId(R.id.screen_table);
+        root.addView(screenTable, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        ImageView tablePlate = plate(R.drawable.bg_table_1);
+        screenTable.add(tablePlate, 0f, 0f, 1f, 1f);
 
-        // --- header -------------------------------------------------------
-        FrameLayout header = new FrameLayout(this);
-        column.addView(header, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(64)));
+        labelRound = chrome(R.id.label_round);
+        labelWild = chrome(R.id.label_wild);
+        labelRound.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+        labelWild.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
+        add(screenTable, labelRound, new float[]{0.020f, 0.008f, 0.55f, 0.028f});
+        add(screenTable, labelWild, new float[]{0.45f, 0.008f, 0.53f, 0.028f});
 
-        labelRound = new TextView(this);
-        labelRound.setId(R.id.label_round);
-        labelRound.setTextColor(Color.WHITE);
-        labelRound.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        FrameLayout.LayoutParams rlp = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, dp(26));
-        rlp.leftMargin = dp(10);
-        rlp.topMargin = dp(4);
-        header.addView(labelRound, rlp);
-
-        labelWild = new TextView(this);
-        labelWild.setId(R.id.label_wild);
-        labelWild.setTextColor(Color.WHITE);
-        labelWild.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        labelWild.setGravity(Gravity.END);
-        FrameLayout.LayoutParams wlp = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, dp(26));
-        wlp.gravity = Gravity.TOP | Gravity.END;
-        wlp.rightMargin = dp(10);
-        wlp.topMargin = dp(4);
-        header.addView(labelWild, wlp);
-
-        labelStatus = new TextView(this);
-        labelStatus.setId(R.id.label_status);
-        labelStatus.setTextColor(Color.WHITE);
-        labelStatus.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        labelStatus = chrome(R.id.label_status);
         labelStatus.setGravity(Gravity.CENTER);
-        FrameLayout.LayoutParams stlp = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(30));
-        stlp.topMargin = dp(30);
-        header.addView(labelStatus, stlp);
+        add(screenTable, labelStatus, new float[]{0.020f, 0.038f, 0.96f, 0.028f});
 
-        // --- opponent seats: left (boy), top (cat), right (girl) -----------
-        FrameLayout seats = new FrameLayout(this);
-        column.addView(seats, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1.15f));
-
-        slotBoy = buildSeat(Player.SeatKind.BOY, R.id.slot_opp_boy, R.id.cloud_opp_boy, R.id.meld_opp_boy);
-        FrameLayout.LayoutParams blp = new FrameLayout.LayoutParams(
-                dimen(R.dimen.seat_w), dimen(R.dimen.seat_h));
-        blp.gravity = Gravity.START | Gravity.CENTER_VERTICAL;
-        blp.leftMargin = dp(6);
-        seats.addView(slotBoy, blp);
-
-        slotCat = buildSeat(Player.SeatKind.CAT, R.id.slot_opp_cat, R.id.cloud_opp_cat, R.id.meld_opp_cat);
-        FrameLayout.LayoutParams clp = new FrameLayout.LayoutParams(
-                dimen(R.dimen.seat_w), dimen(R.dimen.seat_h));
-        clp.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
-        clp.topMargin = dp(4);
-        seats.addView(slotCat, clp);
-
-        slotGirl = buildSeat(Player.SeatKind.GIRL, R.id.slot_opp_girl, R.id.cloud_opp_girl, R.id.meld_opp_girl);
-        FrameLayout.LayoutParams glp = new FrameLayout.LayoutParams(
-                dimen(R.dimen.seat_w), dimen(R.dimen.seat_h));
-        glp.gravity = Gravity.END | Gravity.CENTER_VERTICAL;
-        glp.rightMargin = dp(6);
-        seats.addView(slotGirl, glp);
-
-        // --- center piles -------------------------------------------------
-        FrameLayout center = new FrameLayout(this);
-        column.addView(center, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, 0.75f));
-
-        drawPile = buildPile(R.id.draw_pile, R.drawable.card_back, "DRAW");
-        FrameLayout.LayoutParams dlp = new FrameLayout.LayoutParams(
-                dimen(R.dimen.pile_w), dimen(R.dimen.pile_h));
-        dlp.gravity = Gravity.CENTER;
-        dlp.leftMargin = -(dp(46));
-        center.addView(drawPile, dlp);
+        // Mark 2: draw pile. Mark 3: discard pile.
+        drawPile = new FrameLayout(this);
+        drawPile.setId(R.id.draw_pile);
+        drawPile.setBackgroundResource(R.drawable.card_back);
+        drawPile.addView(centreLabel("DRAW"), match());
+        add(screenTable, drawPile, DRAW_BOX);
         drawPile.setOnClickListener(v -> onDrawTapped());
 
-        discardPile = buildPile(R.id.discard_pile, R.drawable.card_face_green, "DISC");
-        FrameLayout.LayoutParams klp = new FrameLayout.LayoutParams(
-                dimen(R.dimen.pile_w), dimen(R.dimen.pile_h));
-        klp.gravity = Gravity.CENTER;
-        klp.leftMargin = dp(46);
-        center.addView(discardPile, klp);
+        discardPile = new FrameLayout(this);
+        discardPile.setId(R.id.discard_pile);
+        discardPile.setBackgroundResource(R.drawable.card_back);
+        discardPile.addView(centreLabel("DISC"), match());
+        add(screenTable, discardPile, DISC_BOX);
         discardPile.setOnClickListener(v -> onDiscardTapped());
 
-        // --- player area: cloud, meld tray, fan ---------------------------
-        FrameLayout playerArea = new FrameLayout(this);
-        column.addView(playerArea, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 0, 2.4f));
-
-        LinearLayout playerSlot = new LinearLayout(this);
-        playerSlot.setId(R.id.slot_player);
-        playerSlot.setOrientation(LinearLayout.HORIZONTAL);
-        playerSlot.setGravity(Gravity.CENTER_VERTICAL);
-        FrameLayout.LayoutParams pslp = new FrameLayout.LayoutParams(dp(340), dp(46));
-        pslp.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
-        pslp.topMargin = dp(2);
-        playerArea.addView(playerSlot, pslp);
-
+        // Mark 4: your score bubble only. No opponent clouds this pass.
         cloudPlayer = new TextView(this);
         cloudPlayer.setId(R.id.cloud_player);
         cloudPlayer.setBackgroundResource(R.drawable.cloud_plate);
         cloudPlayer.setTextColor(Color.WHITE);
         cloudPlayer.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-        cloudPlayer.setPadding(dp(8), dp(6), dp(8), dp(6));
-        playerSlot.addView(cloudPlayer, new LinearLayout.LayoutParams(dp(230), dimen(R.dimen.cloud_h)));
-        cloudPlayer.setOnClickListener(v -> onOwnCloudTapped());
+        cloudPlayer.setGravity(Gravity.CENTER);
+        cloudPlayer.setPadding(dp(6), dp(2), dp(6), dp(2));
+        cloudPlayer.setOnClickListener(v -> onOwnBubbleTapped());
+        add(screenTable, cloudPlayer, BUBBLE_BOX);
 
-        countPlayer = new TextView(this);
-        countPlayer.setId(R.id.count_player);
-        countPlayer.setTextColor(Color.WHITE);
-        countPlayer.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-        countPlayer.setPadding(dp(8), dp(6), dp(8), dp(6));
-        // Human seat shows a score bubble only; the fan itself shows the hand.
-        countPlayer.setVisibility(View.GONE);
-        playerSlot.addView(countPlayer, new LinearLayout.LayoutParams(dp(100), dimen(R.dimen.cloud_h)));
+        // Hidden opponent-cloud / seat hooks kept for a later pass.
+        add(screenTable, hidden(R.id.cloud_opp_boy), new float[]{0f, 0f, 0f, 0f});
+        add(screenTable, hidden(R.id.cloud_opp_cat), new float[]{0f, 0f, 0f, 0f});
+        add(screenTable, hidden(R.id.cloud_opp_girl), new float[]{0f, 0f, 0f, 0f});
+        add(screenTable, hidden(R.id.slot_opp_boy), new float[]{0f, 0f, 0f, 0f});
+        add(screenTable, hidden(R.id.slot_opp_cat), new float[]{0f, 0f, 0f, 0f});
+        add(screenTable, hidden(R.id.slot_opp_girl), new float[]{0f, 0f, 0f, 0f});
+        add(screenTable, hidden(R.id.count_player), new float[]{0f, 0f, 0f, 0f});
+        add(screenTable, hidden(R.id.portrait_player), new float[]{0f, 0f, 0f, 0f});
 
-        meldPlayer = new LinearLayout(this);
-        meldPlayer.setId(R.id.meld_player);
-        meldPlayer.setOrientation(LinearLayout.HORIZONTAL);
-        FrameLayout.LayoutParams mplp = new FrameLayout.LayoutParams(dp(348), dp(26));
-        mplp.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
-        mplp.topMargin = dp(50);
-        playerArea.addView(meldPlayer, mplp);
-
-        handArea = new FrameLayout(this);
-        FrameLayout.LayoutParams halp = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(212));
-        halp.gravity = Gravity.TOP;
-        halp.topMargin = dp(78);
-        playerArea.addView(handArea, halp);
+        // Mark 1: your cards. Two-row fan (7 + 6) plus the raised drawn card.
+        fanBox = new PlateLayout(this);
+        fanBox.setId(R.id.fan);
+        screenTable.add(fanBox, FAN_BOX[0], FAN_BOX[1], FAN_BOX[2], FAN_BOX[3]);
 
         fanTop = new LinearLayout(this);
         fanTop.setId(R.id.fan_top_row);
         fanTop.setOrientation(LinearLayout.HORIZONTAL);
         fanTop.setGravity(Gravity.CENTER_HORIZONTAL);
-        FrameLayout.LayoutParams ftlp = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(104));
-        ftlp.topMargin = dp(0);
-        handArea.addView(fanTop, ftlp);
+        fanBox.add(fanTop, 0f, 0f, 1f, 0.52f);
 
         fanBottom = new LinearLayout(this);
         fanBottom.setId(R.id.fan_bottom_row);
         fanBottom.setOrientation(LinearLayout.HORIZONTAL);
         fanBottom.setGravity(Gravity.CENTER_HORIZONTAL);
-        FrameLayout.LayoutParams fblp = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(104));
-        fblp.topMargin = dp(96);
-        handArea.addView(fanBottom, fblp);
+        fanBox.add(fanBottom, 0f, 0.50f, 1f, 0.52f);
 
-        // Swipe-up anywhere on the fan (or the player cloud) opens the sort overlay.
-        handArea.setOnTouchListener((v, e) -> { fanGesture.onTouchEvent(e); return false; });
-        fanTop.setOnTouchListener((v, e) -> { fanGesture.onTouchEvent(e); return false; });
-        fanBottom.setOnTouchListener((v, e) -> { fanGesture.onTouchEvent(e); return false; });
-        // Tap empty felt inside the hand area (not on a card) deselects the locked card.
-        handArea.setOnClickListener(v -> {
-            if (engine.phase() == GameEngine.Phase.WAIT_DISCARD && selectedHandIndex >= 0) {
-                selectedHandIndex = -1;
-                refreshTable();
-            }
-        });
-        cloudPlayer.setOnTouchListener((v, e) -> {
-            fanGesture.onTouchEvent(e);
-            return false;
-        });
+        fanBox.setOnClickListener(v -> onEmptyFanTapped());
 
-        // --- action buttons ----------------------------------------------
+        // Own meld tray (hidden until a laydown).
+        meldPlayer = new LinearLayout(this);
+        meldPlayer.setId(R.id.meld_player);
+        meldPlayer.setOrientation(LinearLayout.HORIZONTAL);
+        meldPlayer.setGravity(Gravity.CENTER);
+        add(screenTable, meldPlayer, new float[]{0.30f, 0.628f, 0.40f, 0.026f});
+        add(screenTable, hidden(R.id.meld_opp_boy), new float[]{0f, 0f, 0f, 0f});
+        add(screenTable, hidden(R.id.meld_opp_cat), new float[]{0f, 0f, 0f, 0f});
+        add(screenTable, hidden(R.id.meld_opp_girl), new float[]{0f, 0f, 0f, 0f});
+
+        // Plain rule buttons (no plate mark exists for these).
         btnDeclareOut = makeButton(R.id.btn_declare_out, "DECLARE OUT");
         btnLayMelds = makeButton(R.id.btn_lay_melds, "LAY MELDS");
         btnParkEnd = makeButton(R.id.btn_park_end, "PARK END");
-        LinearLayout actions = new LinearLayout(this);
-        actions.setOrientation(LinearLayout.HORIZONTAL);
-        actions.setGravity(Gravity.CENTER);
-        column.addView(actions, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(56)));
-        actions.addView(btnParkEnd, new LinearLayout.LayoutParams(0, dp(48), 1f));
-        actions.addView(btnDeclareOut, new LinearLayout.LayoutParams(0, dp(48), 1f));
-        actions.addView(btnLayMelds, new LinearLayout.LayoutParams(0, dp(48), 1f));
-
-        btnParkEnd.setOnClickListener(v -> onParkEnd());
+        add(screenTable, btnDeclareOut, new float[]{0.020f, 0.902f, 0.30f, 0.055f});
+        add(screenTable, btnLayMelds, new float[]{0.350f, 0.902f, 0.30f, 0.055f});
+        add(screenTable, btnParkEnd, new float[]{0.680f, 0.902f, 0.30f, 0.055f});
         btnDeclareOut.setOnClickListener(v -> onDeclareOut());
         btnLayMelds.setOnClickListener(v -> onLayMelds());
+        btnParkEnd.setOnClickListener(v -> onParkEnd());
+
+        // Swipe up on the felt or the fan opens the sort overlay (hand office).
+        // The buttons sit below the fan, so the sort gesture never fights a tap.
+        installSwipeUp(tablePlate, this::openSortOverlay);
+        installSwipeUp(fanBox, this::openSortOverlay);
+
+        screenTable.setVisibility(View.GONE);
     }
 
-    private FrameLayout buildSeat(Player.SeatKind kind, int slotId, int cloudId, int meldId) {
-        FrameLayout slot = new FrameLayout(this);
-        slot.setId(slotId);
-
-        View portrait = new View(this);
-        portrait.setId(portraitIdFor(kind));
-        portrait.setBackgroundResource(portraitDrawableFor(kind));
-        FrameLayout.LayoutParams plp = new FrameLayout.LayoutParams(dp(62), dp(62));
-        plp.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
-        slot.addView(portrait, plp);
-
-        TextView cloud = new TextView(this);
-        cloud.setId(cloudId);
-        cloud.setBackgroundResource(R.drawable.cloud_plate);
-        cloud.setTextColor(Color.WHITE);
-        cloud.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10);
-        cloud.setPadding(dp(4), dp(2), dp(4), dp(2));
-        cloud.setGravity(Gravity.CENTER);
-        FrameLayout.LayoutParams clp = new FrameLayout.LayoutParams(
-                dimen(R.dimen.cloud_w), dimen(R.dimen.cloud_h));
-        clp.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
-        clp.topMargin = dp(62);
-        slot.addView(cloud, clp);
-
-        TextView count = new TextView(this);
-        count.setId(countIdFor(kind));
-        count.setTextColor(Color.WHITE);
-        count.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10);
-        count.setGravity(Gravity.CENTER);
-        FrameLayout.LayoutParams ctlp = new FrameLayout.LayoutParams(dp(116), dp(20));
-        ctlp.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
-        ctlp.topMargin = dp(102);
-        slot.addView(count, ctlp);
-
-        LinearLayout melds = new LinearLayout(this);
-        melds.setId(meldId);
-        melds.setOrientation(LinearLayout.HORIZONTAL);
-        FrameLayout.LayoutParams mlp = new FrameLayout.LayoutParams(dp(116), dp(24));
-        mlp.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
-        mlp.topMargin = dp(122);
-        slot.addView(melds, mlp);
-
-        cloud.setOnClickListener(v -> onOpponentCloud(kind));
-        if (kind == Player.SeatKind.BOY) cloudBoy = cloud;
-        if (kind == Player.SeatKind.CAT) cloudCat = cloud;
-        if (kind == Player.SeatKind.GIRL) cloudGirl = cloud;
-        if (kind == Player.SeatKind.BOY) meldBoy = melds;
-        if (kind == Player.SeatKind.CAT) meldCat = melds;
-        if (kind == Player.SeatKind.GIRL) meldGirl = melds;
-        if (kind == Player.SeatKind.BOY) countBoy = count;
-        if (kind == Player.SeatKind.CAT) countCat = count;
-        if (kind == Player.SeatKind.GIRL) countGirl = count;
-        return slot;
+    private void installSwipeUp(View v, Runnable onSwipe) {
+        v.setOnTouchListener((view, e) -> {
+            // Consume the whole gesture: returning false on ACTION_DOWN would
+            // drop the stream and onFling would never see the move events.
+            if (swipeUp.onTouchEvent(e)) onSwipe.run();
+            return true;
+        });
     }
 
-    private FrameLayout buildPile(int id, int bg, String label) {
-        FrameLayout pile = new FrameLayout(this);
-        pile.setId(id);
-        pile.setBackgroundResource(bg);
-        TextView t = new TextView(this);
-        t.setText(label);
-        t.setTextColor(Color.WHITE);
-        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
-        t.setGravity(Gravity.CENTER);
-        pile.addView(t, new FrameLayout.LayoutParams(
+    // --- you-win / try-again: plate + transparent Play Again ----------
+
+    private void buildResultPlates() {
+        screenYouWin = resultPlate(R.id.screen_you_win, R.drawable.bg_you_win, PA_WIN_BOX, true);
+        screenTryAgain = resultPlate(R.id.screen_try_again, R.drawable.bg_try_again, PA_LOSE_BOX, false);
+    }
+
+    private PlateLayout resultPlate(int screenId, int plateId, float[] paBox, boolean isWin) {
+        PlateLayout p = new PlateLayout(this);
+        p.setId(screenId);
+        root.addView(p, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        return pile;
+        p.add(plate(plateId), 0f, 0f, 1f, 1f);
+
+        ImageButton pa = new ImageButton(this);
+        pa.setId(R.id.btn_play_again);
+        pa.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        pa.setImageResource(R.drawable.btn_play_again);
+        pa.setBackgroundColor(Color.TRANSPARENT);
+        pa.setPadding(0, 0, 0, 0);
+        p.add(pa, paBox[0], paBox[1], paBox[2], paBox[3]);
+        pa.setOnClickListener(v -> showTitle());
+        if (isWin) btnPlayAgain = pa;
+
+        p.setVisibility(View.GONE);
+        return p;
     }
 
-    private void buildScoreOverlay() {
-        overlayScores = buildModal(R.id.overlay_scores, "ROUND SCORES");
-        LinearLayout panel = panelOf(overlayScores);
-        labelScores = new TextView(this);
-        labelScores.setId(R.id.label_scores);
-        labelScores.setTextColor(Color.WHITE);
-        labelScores.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
-        labelScores.setGravity(Gravity.CENTER);
-        panel.addView(labelScores, rowParams(dp(220)));
-        Button cont = new Button(this);
-        cont.setId(R.id.btn_continue);
-        cont.setTag("continue");
-        cont.setText("CONTINUE");
-        cont.setOnClickListener(null);
-        panel.addView(cont, rowParams(dp(60)));
-        overlayScores.setVisibility(View.GONE);
-    }
-
-    private void buildResultScreen() {
-        FrameLayout modal = new FrameLayout(this);
-        modal.setId(R.id.screen_result);
-        modal.setBackgroundColor(0xE6000000);
-        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
-        root.addView(modal, lp);
-
-        LinearLayout panel = new LinearLayout(this);
-        panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setGravity(Gravity.CENTER_HORIZONTAL);
-        FrameLayout.LayoutParams plp = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        plp.gravity = Gravity.CENTER;
-        modal.addView(panel, plp);
-
-        labelResult = new TextView(this);
-        labelResult.setId(R.id.label_result);
-        labelResult.setTextColor(Color.WHITE);
-        labelResult.setTextSize(TypedValue.COMPLEX_UNIT_SP, 34);
-        labelResult.setGravity(Gravity.CENTER);
-        panel.addView(labelResult, rowParams(dp(90)));
-
-        btnPlayAgain = makeButton(R.id.btn_play_again, "PLAY AGAIN");
-        panel.addView(btnPlayAgain, rowParams(dp(64)));
-        btnPlayAgain.setOnClickListener(v -> showTitle());
-
-        screenResult = modal;
-        screenResult.setVisibility(View.GONE);
-    }
+    // --- overlays -----------------------------------------------------
 
     private void buildSortOverlay() {
-        overlaySort = buildModal(R.id.overlay_sort, "SORT HAND");
+        overlaySort = new PlateLayout(this);
+        overlaySort.setId(R.id.overlay_sort);
+        root.addView(overlaySort, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        overlaySort.add(plate(R.drawable.bg_sort), 0f, 0f, 1f, 1f);
+
+        LinearLayout row = new LinearLayout(this);
+        row.setTag("sort_row");
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER);
+        overlaySort.add(row, SORT_CARDS[0], SORT_CARDS[1], SORT_CARDS[2], SORT_CARDS[3]);
+
+        TextView hint = new TextView(this);
+        hint.setTextColor(Color.WHITE);
+        hint.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        hint.setGravity(Gravity.CENTER);
+        hint.setText("tap to pick / swap / deselect  -  swipe up to close (freezes order)");
+        overlaySort.add(hint, 0.05f, 0.832f, 0.90f, 0.036f);
+
+        overlaySort.setOnTouchListener((v, e) -> {
+            if (swipeUp.onTouchEvent(e)) closeSortOverlay();
+            return true;
+        });
         overlaySort.setVisibility(View.GONE);
     }
 
-    private void buildMeldOverlay() {
-        overlayMelds = buildModal(R.id.overlay_melds, "MELD REVIEW");
-        overlayMelds.setVisibility(View.GONE);
+    private void buildScoreOverlay() {
+        overlayScores = new PlateLayout(this);
+        overlayScores.setId(R.id.overlay_scores);
+        root.addView(overlayScores, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        overlayScores.add(plate(R.drawable.bg_score_card), 0f, 0f, 1f, 1f);
+
+        scoreGirl = sticky(R.id.score_girl);
+        scoreBoy = sticky(R.id.score_boy);
+        scoreCat = sticky(R.id.score_cat);
+        scorePlayer = sticky(R.id.score_player);
+        add(overlayScores, scoreGirl, SC_GIRL);
+        add(overlayScores, scoreBoy, SC_BOY);
+        add(overlayScores, scoreCat, SC_CAT);
+        add(overlayScores, scorePlayer, SC_ME);
+
+        labelScores = new TextView(this);
+        labelScores.setId(R.id.label_scores);
+        labelScores.setTextColor(Color.WHITE);
+        labelScores.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        labelScores.setGravity(Gravity.CENTER);
+        overlayScores.add(labelScores, 0.05f, 0.938f, 0.90f, 0.040f);
+
+        overlayScores.setOnTouchListener((v, e) -> {
+            if (swipeUp.onTouchEvent(e)) dismissScores();
+            return true;
+        });
+        overlayScores.setVisibility(View.GONE);
     }
 
-    // ------------------------------------------------------------------
-    // Modal helpers
-    // ------------------------------------------------------------------
+    private void buildMeldOverlay() {
+        overlayMelds = new PlateLayout(this);
+        overlayMelds.setId(R.id.overlay_melds);
+        root.addView(overlayMelds, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
-    private FrameLayout buildModal(int id, String title) {
-        FrameLayout modal = new FrameLayout(this);
-        modal.setId(id);
-        modal.setBackgroundColor(0xE6000000);
-        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
-        root.addView(modal, lp);
+        View scrim = new View(this);
+        scrim.setBackgroundColor(0xF0000000);
+        overlayMelds.add(scrim, 0f, 0f, 1f, 1f);
 
         ScrollView scroll = new ScrollView(this);
-        FrameLayout.LayoutParams slp = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        slp.gravity = Gravity.CENTER;
-        modal.addView(scroll, slp);
-
         LinearLayout panel = new LinearLayout(this);
         panel.setTag("panel");
         panel.setOrientation(LinearLayout.VERTICAL);
         panel.setGravity(Gravity.CENTER_HORIZONTAL);
         scroll.addView(panel);
+        overlayMelds.add(scroll, 0.06f, 0.16f, 0.88f, 0.68f);
 
-        TextView heading = new TextView(this);
-        heading.setText(title);
-        heading.setTextColor(Color.WHITE);
-        heading.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22);
-        heading.setGravity(Gravity.CENTER);
-        panel.addView(heading, rowParams(dp(54)));
-        return modal;
+        overlayMelds.setOnTouchListener((v, e) -> {
+            if (swipeUp.onTouchEvent(e)) closeMeldOverlay();
+            return true;
+        });
+        overlayMelds.setVisibility(View.GONE);
     }
 
-    private LinearLayout panelOf(View modal) {
-        return (LinearLayout) modal.findViewWithTag("panel");
+    private TextView sticky(int id) {
+        TextView t = new TextView(this);
+        t.setId(id);
+        t.setTextColor(Color.BLACK);
+        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
+        t.setGravity(Gravity.CENTER);
+        return t;
+    }
+
+    private TextView chrome(int id) {
+        TextView t = new TextView(this);
+        t.setId(id);
+        t.setTextColor(Color.WHITE);
+        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        t.setShadowLayer(3f, 1f, 1f, Color.BLACK);
+        return t;
+    }
+
+    private View hidden(int id) {
+        View v = new View(this);
+        v.setId(id);
+        v.setVisibility(View.GONE);
+        return v;
+    }
+
+    private TextView centreLabel(String s) {
+        TextView t = new TextView(this);
+        t.setText(s);
+        t.setTextColor(Color.WHITE);
+        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
+        t.setGravity(Gravity.CENTER);
+        return t;
+    }
+
+    private FrameLayout.LayoutParams match() {
+        return new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
     }
 
     // ------------------------------------------------------------------
@@ -534,26 +466,26 @@ public class MainActivity extends Activity {
 
     private void showTitle() {
         hideOverlays();
-        screenResult.setVisibility(View.GONE);
         screenTable.setVisibility(View.GONE);
+        screenYouWin.setVisibility(View.GONE);
+        screenTryAgain.setVisibility(View.GONE);
         screenTitle.setVisibility(View.VISIBLE);
     }
 
     private void startGame(int opponents) {
-        opponentCount = opponents;
         engine.newGame(opponents);
         screenTitle.setVisibility(View.GONE);
-        screenResult.setVisibility(View.GONE);
+        screenYouWin.setVisibility(View.GONE);
+        screenTryAgain.setVisibility(View.GONE);
         screenTable.setVisibility(View.VISIBLE);
-        screenTable.setBackgroundResource(tableBackground(opponents));
-        configureSeats(opponents);
+        ((ImageView) screenTable.getChildAt(0)).setImageResource(tablePlate(opponents));
         selectedHandIndex = -1;
         drawnHandIndex = -1;
         refreshTable();
         maybeRunAi();
     }
 
-    private int tableBackground(int opponents) {
+    private int tablePlate(int opponents) {
         switch (opponents) {
             case 1: return R.drawable.bg_table_1;
             case 2: return R.drawable.bg_table_2;
@@ -561,17 +493,18 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void configureSeats(int opponents) {
-        slotBoy.setVisibility(opponents >= 1 ? View.VISIBLE : View.GONE);
-        slotCat.setVisibility(opponents >= 2 ? View.VISIBLE : View.GONE);
-        slotGirl.setVisibility(opponents >= 3 ? View.VISIBLE : View.GONE);
+    private void showResult() {
+        boolean humanWon = engine.winners().size() == 1 && engine.winners().get(0) == 0;
+        screenTable.setVisibility(View.GONE);
+        screenYouWin.setVisibility(humanWon ? View.VISIBLE : View.GONE);
+        screenTryAgain.setVisibility(humanWon ? View.GONE : View.VISIBLE);
     }
 
     private void hideOverlays() {
         overlayScores.setVisibility(View.GONE);
         overlaySort.setVisibility(View.GONE);
         overlayMelds.setVisibility(View.GONE);
-        sortOverlayOpen = false;
+        sortSelected = -1;
     }
 
     // ------------------------------------------------------------------
@@ -580,48 +513,30 @@ public class MainActivity extends Activity {
 
     private void refreshTable() {
         labelRound.setText("Round " + engine.roundNumber() + " of " + GameEngine.TOTAL_ROUNDS
-                + (engine.isTiebreak() ? " (tiebreak)" : ""));
-        labelWild.setText("Dealt " + engine.dealtCount() + "  |  Wild: " + engine.wildLabel()
+                + (engine.isTiebreak() ? "  (tiebreak)" : ""));
+        labelWild.setText("Dealt " + engine.dealtCount() + "  |  Wild " + engine.wildLabel()
                 + " + Jokers");
         labelStatus.setText(engine.statusLine());
 
-        // Piles
-        updatePile(drawPile, engine.drawPile().isEmpty() ? null : engine.drawPile().get(0),
-                "DRAW (" + engine.drawPile().size() + ")", R.drawable.card_back);
+        updatePile(drawPile, engine.drawPile().isEmpty() ? null
+                : engine.drawPile().get(0), "DRAW (" + engine.drawPile().size() + ")",
+                R.drawable.card_back);
         Card top = engine.topDiscard();
         updatePile(discardPile, top, top == null ? "DISC" : top.shortLabel(),
-                top == null ? R.drawable.card_face_green : faceDrawable(top));
+                top == null ? R.drawable.card_back : faceDrawable(top));
 
-        // Clouds
-        updateCloud(cloudPlayer, countPlayer, engine.human(), "You");
-        if (opponentCount >= 1) updateCloud(cloudBoy, countBoy, engine.player(1), "Boy");
-        if (opponentCount >= 2) updateCloud(cloudCat, countCat, engine.player(2), "Cat");
-        if (opponentCount >= 3) updateCloud(cloudGirl, countGirl, engine.player(3), "Girl");
+        Player h = engine.human();
+        cloudPlayer.setText("You  " + h.cumulativeScore
+                + (h.roundScore != 0 ? " (" + h.roundScore + ")" : ""));
 
-        // Meld trays
         renderMelds(meldPlayer, engine.meldsFor(0));
-        if (opponentCount >= 1) renderMelds(meldBoy, engine.meldsFor(1));
-        if (opponentCount >= 2) renderMelds(meldCat, engine.meldsFor(2));
-        if (opponentCount >= 3) renderMelds(meldGirl, engine.meldsFor(3));
-
         renderFan();
         updateButtons();
     }
 
-    private void updateCloud(TextView cloud, TextView count, Player p, String label) {
-        cloud.setText(label + " score " + p.cumulativeScore
-                + (p.roundScore != 0 ? " (" + p.roundScore + ")" : ""));
-        if (p.isHuman()) {
-            count.setText("hand " + p.handCount() + " | best " + engine.previewScore(0));
-        } else {
-            count.setText("hand " + p.handCount());
-        }
-    }
-
     private void updatePile(FrameLayout pile, Card card, String label, int bg) {
         pile.setBackgroundResource(bg);
-        TextView t = (TextView) pile.getChildAt(0);
-        t.setText(label);
+        ((TextView) pile.getChildAt(0)).setText(label);
     }
 
     private void renderMelds(LinearLayout tray, List<Meld> melds) {
@@ -630,41 +545,34 @@ public class MainActivity extends Activity {
             TextView tv = new TextView(this);
             tv.setText(m.type == Meld.Type.BOOK ? "B" : "R");
             tv.setTextColor(Color.WHITE);
-            tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
-            tv.setPadding(dp(3), dp(2), dp(3), dp(2));
+            tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10);
+            tv.setGravity(Gravity.CENTER);
             tv.setBackgroundResource(R.drawable.slot_plate);
-            tray.addView(tv, new LinearLayout.LayoutParams(dp(34), dp(26)));
+            tray.addView(tv, new LinearLayout.LayoutParams(dp(26), dp(20)));
         }
     }
 
     private void renderFan() {
         fanTop.removeAllViews();
         fanBottom.removeAllViews();
-        View stale = handArea.findViewWithTag("raised_card");
-        if (stale != null) handArea.removeView(stale);
-        List<Card> hand = engine.handOf(0);
+        View stale = fanBox.findViewWithTag("raised_card");
+        if (stale != null) fanBox.removeView(stale);
 
-        // Two-row fan: top row up to 7, bottom row up to 6. Round 11's 14th card is the
-        // raised insert, never a third row.
-        boolean insertPending = engine.phase() == GameEngine.Phase.INSERT_PENDING && drawnHandIndex >= 0;
+        List<Card> hand = engine.handOf(0);
+        boolean insertPending = engine.phase() == GameEngine.Phase.INSERT_PENDING
+                && drawnHandIndex >= 0 && drawnHandIndex < hand.size();
+
         List<Card> parked = new ArrayList<>();
         Card raised = null;
         for (int i = 0; i < hand.size(); i++) {
-            if (insertPending && i == drawnHandIndex) {
-                raised = hand.get(i);
-            } else {
-                parked.add(hand.get(i));
-            }
+            if (insertPending && i == drawnHandIndex) raised = hand.get(i);
+            else parked.add(hand.get(i));
         }
         int topCount = Math.min(7, parked.size());
         addFanCards(fanTop, parked, 0, topCount, 0);
-        if (parked.size() > 7) {
-            addFanCards(fanBottom, parked, 7, parked.size(), 7);
-        }
-        if (raised != null) {
-            // Raise the drawn card above the end of the fan so it reads as insert-pending.
-            addRaisedCard(raised, drawnHandIndex);
-        }
+        if (parked.size() > 7) addFanCards(fanBottom, parked, 7, parked.size(), 7);
+
+        if (raised != null) addRaisedCard(raised, drawnHandIndex);
     }
 
     private void addRaisedCard(Card card, int handIndex) {
@@ -672,25 +580,18 @@ public class MainActivity extends Activity {
         overlay.setTag("raised_card");
         View cv = buildCardView(card);
         cv.setOnClickListener(v -> onHandCardTapped(handIndex));
-        overlay.addView(cv, new FrameLayout.LayoutParams(
-                dimen(R.dimen.card_w_raised), dimen(R.dimen.card_h_raised)));
-        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
-                dimen(R.dimen.card_w_raised), dimen(R.dimen.card_h_raised));
-        lp.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
-        lp.bottomMargin = dp(28);
-        handArea.addView(overlay, lp);
+        overlay.addView(cv, match());
+        fanBox.add(overlay, 0.430f, -0.06f, 0.140f, 0.280f);
     }
 
     private void addFanCards(LinearLayout row, List<Card> hand, int from, int to, int offset) {
-        int cardW = dimen(R.dimen.card_w);
-        int cardH = dimen(R.dimen.card_h);
-        int minShift = dimen(R.dimen.fan_top_overlap);
-        int avail = getResources().getDisplayMetrics().widthPixels - dp(20);
+        int cardH = fanRowHeight();
+        int cardW = (int) (cardH * 0.72f);
+        int avail = Math.max(cardW, rowWidth());
         int n = to - from;
         int shift = cardW;
         if (n > 1) {
-            shift = Math.min((int) (cardW * 0.72f), (avail - cardW) / (n - 1));
-            shift = Math.max(shift, Math.min(minShift, cardW - dp(8)));
+            shift = Math.min((int) (cardW * 0.72f), Math.max(1, (avail - cardW) / (n - 1)));
         }
         for (int i = from; i < to; i++) {
             int idx = offset + (i - from);
@@ -699,51 +600,47 @@ public class MainActivity extends Activity {
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(cardW, cardH);
             if (i > from) lp.leftMargin = -(cardW - shift);
             row.addView(cv, lp);
-            if (idx == selectedHandIndex) cv.setTranslationY(-dimen(R.dimen.fan_lift));
+            if (idx == selectedHandIndex) cv.setTranslationY(-dp(14));
         }
     }
 
-    private View findCardView(int handIndex) {
-        int i = 0;
-        for (int r = 0; r < 2; r++) {
-            LinearLayout row = r == 0 ? fanTop : fanBottom;
-            for (int c = 0; c < row.getChildCount(); c++) {
-                if (i == handIndex) return row.getChildAt(c);
-                i++;
-            }
-        }
-        return null;
+    private int fanRowHeight() {
+        return Math.max(dp(40), (int) (getResources().getDisplayMetrics().heightPixels
+                * FAN_BOX[3] * 0.46f));
+    }
+
+    private int rowWidth() {
+        return (int) (getResources().getDisplayMetrics().widthPixels * FAN_BOX[2]);
     }
 
     private View buildCardView(Card card) {
         FrameLayout f = new FrameLayout(this);
         f.setBackgroundResource(card.isJoker() ? R.drawable.card_face_joker : faceDrawable(card));
+        f.setElevation(dp(2));
 
         TextView pip = new TextView(this);
-        pip.setText(card.isJoker() ? "JOKER" : card.rankLabel());
-        pip.setTextColor(Color.WHITE);
-        pip.setTextSize(TypedValue.COMPLEX_UNIT_SP, card.isJoker() ? 11 : 20);
+        pip.setText(card.isJoker() ? "JK" : card.rankLabel());
+        pip.setTextColor(Color.BLACK);
+        pip.setTextSize(TypedValue.COMPLEX_UNIT_SP, card.isJoker() ? 11 : 17);
         pip.setTypeface(Typeface.DEFAULT_BOLD);
         pip.setGravity(Gravity.CENTER);
-        f.addView(pip, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        f.addView(pip, match());
 
         TextView corner = new TextView(this);
         corner.setText(card.shortLabel());
-        corner.setTextColor(Color.WHITE);
-        corner.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10);
+        corner.setTextColor(Color.BLACK);
+        corner.setTextSize(TypedValue.COMPLEX_UNIT_SP, 9);
         FrameLayout.LayoutParams clp = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         clp.leftMargin = dp(3);
-        clp.topMargin = dp(2);
+        clp.topMargin = dp(1);
         f.addView(corner, clp);
         return f;
     }
 
     private void updateButtons() {
-        boolean myTurn = engine.currentIndex() == 0;
         boolean canOut = engine.canDeclareOut(0);
-        boolean canLay = myTurn && engine.isFinalTurn(0);
+        boolean canLay = engine.currentIndex() == 0 && engine.isFinalTurn(0);
         boolean insertPending = engine.phase() == GameEngine.Phase.INSERT_PENDING;
         btnDeclareOut.setVisibility(canOut ? View.VISIBLE : View.GONE);
         btnLayMelds.setVisibility(canLay ? View.VISIBLE : View.GONE);
@@ -762,73 +659,35 @@ public class MainActivity extends Activity {
     }
 
     // ------------------------------------------------------------------
-    // Interaction (handoff section 7)
+    // Interaction
     // ------------------------------------------------------------------
 
     private void onHandCardTapped(int index) {
         GameEngine.Phase ph = engine.phase();
 
         if (ph == GameEngine.Phase.INSERT_PENDING) {
-            if (index == drawnHandIndex) {
-                // Tap the raised card again to park it at the end of the fan.
-                engine.parkPendingAtEnd(0);
-            } else {
-                // Tap a gap to slide the drawn card into that slot.
-                engine.parkPending(0, index);
-            }
+            if (index == drawnHandIndex) engine.parkPendingAtEnd(0);
+            else engine.parkPending(0, index);
             drawnHandIndex = -1;
             selectedHandIndex = -1;
             refreshTable();
             return;
         }
-
         if (ph != GameEngine.Phase.WAIT_DISCARD) {
             if (ph == GameEngine.Phase.WAIT_DRAW) {
-                engine.setStatusLine("Draw before acting. Tap the draw pile or the discard pile.");
+                engine.setStatusLine("Draw first: tap the draw pile, or the discard pile with no card locked.");
                 refreshTable();
             }
             return;
         }
-
-        if (selectedHandIndex == index) {
-            selectedHandIndex = -1;      // tap the locked card again = deselect
-        } else {
-            selectedHandIndex = index;   // lock (hop the lock across the fan)
-        }
+        selectedHandIndex = (selectedHandIndex == index) ? -1 : index;
         refreshTable();
     }
 
-    private void onDiscardTapped() {
-        if (engine.currentIndex() != 0) return;
-        GameEngine.Phase ph = engine.phase();
-
-        if (ph == GameEngine.Phase.WAIT_DRAW) {
-            engine.drawHuman(0, true);
-            afterHumanDraw();
-            return;
-        }
-        if (ph == GameEngine.Phase.INSERT_PENDING) {
-            engine.setStatusLine("Park the drawn card first (tap it or PARK END).");
-            refreshTable();
-            return;
-        }
-        if (ph == GameEngine.Phase.WAIT_DISCARD) {
-            if (selectedHandIndex < 0) {
-                engine.setStatusLine("Tap a card to lock it, then tap the discard pile.");
-                refreshTable();
-                return;
-            }
-            if (engine.canDeclareOut(0)) {
-                engine.declareOut(0);
-                selectedHandIndex = -1;
-                drawnHandIndex = -1;
-                finishTurnAndRefresh();
-                return;
-            }
-            engine.discardCard(0, selectedHandIndex);
+    private void onEmptyFanTapped() {
+        if (engine.phase() == GameEngine.Phase.WAIT_DISCARD && selectedHandIndex >= 0) {
             selectedHandIndex = -1;
-            drawnHandIndex = -1;
-            finishTurnAndRefresh();
+            refreshTable();
         }
     }
 
@@ -840,13 +699,41 @@ public class MainActivity extends Activity {
             return;
         }
         engine.drawHuman(0, false);
-        afterHumanDraw();
-    }
-
-    private void afterHumanDraw() {
         drawnHandIndex = engine.pendingHandIndex();
         selectedHandIndex = -1;
         refreshTable();
+    }
+
+    private void onDiscardTapped() {
+        if (engine.currentIndex() != 0) return;
+        GameEngine.Phase ph = engine.phase();
+        if (ph == GameEngine.Phase.WAIT_DRAW) {
+            engine.drawHuman(0, true);
+            drawnHandIndex = engine.pendingHandIndex();
+            selectedHandIndex = -1;
+            refreshTable();
+            return;
+        }
+        if (ph == GameEngine.Phase.INSERT_PENDING) {
+            engine.setStatusLine("Park the drawn card first.");
+            refreshTable();
+            return;
+        }
+        if (ph == GameEngine.Phase.WAIT_DISCARD) {
+            if (selectedHandIndex < 0) {
+                engine.setStatusLine("Tap a card to lock it, then tap the discard pile.");
+                refreshTable();
+                return;
+            }
+            if (engine.canDeclareOut(0)) {
+                engine.declareOut(0);
+            } else {
+                engine.discardCard(0, selectedHandIndex);
+            }
+            selectedHandIndex = -1;
+            drawnHandIndex = -1;
+            finishTurnAndRefresh();
+        }
     }
 
     private void onParkEnd() {
@@ -873,19 +760,8 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void onOpponentCloud(Player.SeatKind kind) {
-        // Short press: cumulative score only, never cards or hidden melds.
-        for (Player p : engine.players()) {
-            if (p.kind == kind) {
-                engine.setStatusLine(p.name + " cumulative score: " + p.cumulativeScore);
-                break;
-            }
-        }
-        refreshTable();
-    }
-
-    private void onOwnCloudTapped() {
-        openSortOverlay();
+    private void onOwnBubbleTapped() {
+        showScoreOverlay();
     }
 
     private void finishTurnAndRefresh() {
@@ -920,97 +796,53 @@ public class MainActivity extends Activity {
     }
 
     // ------------------------------------------------------------------
-    // Overlays
+    // Score card
     // ------------------------------------------------------------------
 
     private void showScoreOverlay() {
+        // Sticky per seat: girl, boy, cat, you. A seat not in this match reads N/A.
+        scoreGirl.setText(seatScore(Player.SeatKind.GIRL));
+        scoreBoy.setText(seatScore(Player.SeatKind.BOY));
+        scoreCat.setText(seatScore(Player.SeatKind.CAT));
+        scorePlayer.setText(seatScore(Player.SeatKind.HUMAN));
+
         StringBuilder sb = new StringBuilder();
         if (engine.isGameOver() && engine.winners().size() == 1) {
-            Player w = engine.player(engine.winners().get(0));
-            sb.append(w.name).append(" wins the game.\n\n");
-        }
-        // Fixed four-seat card: unused seats read N/A rather than disappearing.
-        String[] seatLabels = {"You", "Boy", "Cat", "Girl"};
-        for (int i = 0; i < seatLabels.length; i++) {
-            if (i < engine.players().size()) {
-                Player p = engine.player(i);
-                sb.append(seatLabels[i]).append(":  round ").append(p.roundScore)
-                        .append("   total ").append(p.cumulativeScore).append('\n');
-            } else {
-                sb.append(seatLabels[i]).append(":  N/A\n");
-            }
-        }
-        if (engine.isGameOver()) {
-            sb.append("\nFinal totals above.");
+            sb.append(engine.player(engine.winners().get(0)).name).append(" wins the game.  ");
         } else if (engine.isTiebreak()) {
-            sb.append("\nTiebreak round (6 cards).");
+            sb.append("Tiebreak round (6 cards).  ");
         } else {
-            sb.append("\nNext: round ").append(engine.roundNumber() + 1);
+            sb.append("Next: round ").append(engine.roundNumber() + 1).append(".  ");
         }
+        sb.append("Swipe up to continue.");
         labelScores.setText(sb.toString());
 
-        Button cont = overlayScores.findViewWithTag("continue");
-        cont.setText("CONTINUE");
-        cont.setOnClickListener(v -> {
-            overlayScores.setVisibility(View.GONE);
-            // Dismiss the round card first: this is where the engine decides whether the
-            // 11th round ends the game or starts an Option 2 tiebreak hand.
-            engine.acknowledgeRoundSummary();
-            selectedHandIndex = -1;
-            drawnHandIndex = -1;
-            if (engine.isGameOver()) {
-                showResult();
-                return;
-            }
-            if (engine.phase() == GameEngine.Phase.ROUND_OVER) {
-                engine.startRound();
-            }
-            refreshTable();
-            maybeRunAi();
-        });
         overlayScores.setVisibility(View.VISIBLE);
     }
 
-    private void showResult() {
-        boolean humanWon = engine.winners().size() == 1 && engine.winners().get(0) == 0;
-        labelResult.setText(humanWon ? "YOU WIN" : "TRY AGAIN");
-        screenTable.setVisibility(View.GONE);
-        screenResult.setVisibility(View.VISIBLE);
+    private String seatScore(Player.SeatKind kind) {
+        Player p = findSeat(kind);
+        if (p == null) return "N/A";
+        return "R " + p.roundScore + "\nT " + p.cumulativeScore;
     }
 
-    private void showMeldOverlay() {
-        LinearLayout panel = panelOf(overlayMelds);
-        panel.removeAllViews();
-        TextView title = new TextView(this);
-        title.setText("MELD REVIEW");
-        title.setTextColor(Color.WHITE);
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
-        title.setGravity(Gravity.CENTER);
-        panel.addView(title, rowParams(dp(50)));
+    private Player findSeat(Player.SeatKind kind) {
+        for (Player p : engine.players()) if (p.kind == kind) return p;
+        return null;
+    }
 
-        for (Player p : engine.players()) {
-            TextView h = new TextView(this);
-            h.setText(p.name + (p.wentOut ? " (went out)" : ""));
-            h.setTextColor(Color.WHITE);
-            h.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-            panel.addView(h, rowParams(dp(34)));
-            for (Meld m : p.laidMelds) {
-                TextView t = new TextView(this);
-                t.setText("  " + m.type + ": " + m.cards.toString());
-                t.setTextColor(Color.WHITE);
-                t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-                panel.addView(t, rowParams(dp(30)));
-            }
+    private void dismissScores() {
+        overlayScores.setVisibility(View.GONE);
+        engine.acknowledgeRoundSummary();
+        selectedHandIndex = -1;
+        drawnHandIndex = -1;
+        if (engine.isGameOver()) {
+            showResult();
+            return;
         }
-        Button close = new Button(this);
-        close.setText("CLOSE");
-        close.setOnClickListener(v -> {
-            overlayMelds.setVisibility(View.GONE);
-            refreshTable();
-            maybeRunAi();
-        });
-        panel.addView(close, rowParams(dp(60)));
-        overlayMelds.setVisibility(View.VISIBLE);
+        if (engine.phase() == GameEngine.Phase.ROUND_OVER) engine.startRound();
+        refreshTable();
+        maybeRunAi();
     }
 
     // ------------------------------------------------------------------
@@ -1018,8 +850,6 @@ public class MainActivity extends Activity {
     // ------------------------------------------------------------------
 
     private void openSortOverlay() {
-        // Sorting is private mid-hand organize. It is unsafe while a drawn card is raised
-        // (the pending index would go stale), so block only that phase and round-over.
         GameEngine.Phase ph = engine.phase();
         if (ph == GameEngine.Phase.INSERT_PENDING
                 || ph == GameEngine.Phase.ROUND_OVER
@@ -1028,53 +858,35 @@ public class MainActivity extends Activity {
             refreshTable();
             return;
         }
-        sortOverlayOpen = true;
         sortSelected = -1;
         renderSortOverlay();
         overlaySort.setVisibility(View.VISIBLE);
     }
 
     private void renderSortOverlay() {
-        LinearLayout panel = panelOf(overlaySort);
-        panel.removeAllViews();
-
-        TextView title = new TextView(this);
-        title.setText("SORT HAND");
-        title.setTextColor(Color.WHITE);
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
-        title.setGravity(Gravity.CENTER);
-        panel.addView(title, rowParams(dp(46)));
-
-        TextView hint = new TextView(this);
-        hint.setText("tap a card to pick it, tap another to swap, tap it again to deselect");
-        hint.setTextColor(Color.WHITE);
-        hint.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-        hint.setGravity(Gravity.CENTER);
-        panel.addView(hint, rowParams(dp(40)));
-
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER);
-        panel.addView(row, rowParams(dp(116)));
+        LinearLayout row = (LinearLayout) overlaySort.findViewWithTag("sort_row");
+        row.removeAllViews();
 
         List<Card> hand = engine.handOf(0);
-        int avail = getResources().getDisplayMetrics().widthPixels - dp(24);
-        int cardW = dp(56);
-        int shift = Math.max(dp(30), Math.min(cardW, (avail - cardW) / Math.max(1, hand.size() - 1)));
-        for (int i = 0; i < hand.size(); i++) {
+        int cardH = Math.max(dp(50), (int) (getResources().getDisplayMetrics().heightPixels
+                * SORT_CARDS[3] * 0.42f));
+        int cardW = (int) (cardH * 0.72f);
+        int avail = Math.max(cardW, (int) (getResources().getDisplayMetrics().widthPixels
+                * SORT_CARDS[2]));
+        int n = hand.size();
+        int shift = n > 1
+                ? Math.min((int) (cardW * 0.7f), Math.max(1, (avail - cardW) / (n - 1)))
+                : cardW;
+
+        for (int i = 0; i < n; i++) {
             final int idx = i;
             View cv = buildCardView(hand.get(i));
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(cardW, dp(84));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(cardW, cardH);
             if (i > 0) lp.leftMargin = -(cardW - shift);
-            if (idx == sortSelected) cv.setTranslationY(-dp(14));
+            if (idx == sortSelected) cv.setTranslationY(-dp(16));
             cv.setOnClickListener(v -> onSortTap(idx));
             row.addView(cv, lp);
         }
-
-        Button exit = new Button(this);
-        exit.setText("EXIT (freeze order)");
-        exit.setOnClickListener(v -> closeSortOverlay());
-        panel.addView(exit, rowParams(dp(58)));
     }
 
     private void onSortTap(int index) {
@@ -1083,7 +895,7 @@ public class MainActivity extends Activity {
         } else if (sortSelected == index) {
             sortSelected = -1;
         } else {
-            java.util.Collections.swap(engine.handOf(0), sortSelected, index);
+            Collections.swap(engine.handOf(0), sortSelected, index);
             sortSelected = -1;
         }
         renderSortOverlay();
@@ -1091,24 +903,56 @@ public class MainActivity extends Activity {
 
     private void closeSortOverlay() {
         overlaySort.setVisibility(View.GONE);
-        sortOverlayOpen = false;
         sortSelected = -1;
         refreshTable();
     }
 
     // ------------------------------------------------------------------
-    // Small helpers
+    // Meld review overlay
     // ------------------------------------------------------------------
 
-    private Button makeButton(int id, String text) {
-        Button b = new Button(this);
-        b.setId(id);
-        b.setText(text);
-        b.setAllCaps(false);
-        b.setBackgroundResource(R.drawable.btn_plate);
-        b.setTextColor(Color.WHITE);
-        return b;
+    private void showMeldOverlay() {
+        LinearLayout panel = (LinearLayout) overlayMelds.findViewWithTag("panel");
+        panel.removeAllViews();
+
+        TextView title = new TextView(this);
+        title.setText("MELD REVIEW");
+        title.setTextColor(Color.WHITE);
+        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
+        title.setGravity(Gravity.CENTER);
+        panel.addView(title, rowParams(dp(44)));
+
+        for (Player p : engine.players()) {
+            TextView h = new TextView(this);
+            h.setText(p.name + (p.wentOut ? "  (went out)" : "")
+                    + "   round " + p.roundScore + " / total " + p.cumulativeScore);
+            h.setTextColor(Color.WHITE);
+            h.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+            panel.addView(h, rowParams(dp(30)));
+            for (Meld m : p.laidMelds) {
+                TextView t = new TextView(this);
+                t.setText("   " + m.type + ": " + m.cards.toString());
+                t.setTextColor(0xFFCCCCCC);
+                t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+                panel.addView(t, rowParams(dp(26)));
+            }
+        }
+
+        Button close = makeButton(R.id.btn_continue, "CONTINUE");
+        close.setOnClickListener(v -> closeMeldOverlay());
+        panel.addView(close, rowParams(dp(54)));
+        overlayMelds.setVisibility(View.VISIBLE);
     }
+
+    private void closeMeldOverlay() {
+        overlayMelds.setVisibility(View.GONE);
+        refreshTable();
+        maybeRunAi();
+    }
+
+    // ------------------------------------------------------------------
+    // Helpers
+    // ------------------------------------------------------------------
 
     private LinearLayout.LayoutParams rowParams(int height) {
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
@@ -1117,36 +961,8 @@ public class MainActivity extends Activity {
         return lp;
     }
 
-    private int portraitIdFor(Player.SeatKind kind) {
-        switch (kind) {
-            case BOY: return R.id.portrait_opp_boy;
-            case CAT: return R.id.portrait_opp_cat;
-            default: return R.id.portrait_opp_girl;
-        }
-    }
-
-    private int portraitDrawableFor(Player.SeatKind kind) {
-        switch (kind) {
-            case BOY: return R.drawable.opp_boy;
-            case CAT: return R.drawable.opp_cat;
-            default: return R.drawable.opp_girl;
-        }
-    }
-
-    private int countIdFor(Player.SeatKind kind) {
-        switch (kind) {
-            case BOY: return R.id.count_opp_boy;
-            case CAT: return R.id.count_opp_cat;
-            default: return R.id.count_opp_girl;
-        }
-    }
-
     private int dp(int value) {
         return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value,
                 getResources().getDisplayMetrics());
-    }
-
-    private int dimen(int resId) {
-        return getResources().getDimensionPixelSize(resId);
     }
 }
