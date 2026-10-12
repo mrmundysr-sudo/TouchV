@@ -247,7 +247,6 @@ public class MainActivity extends Activity {
         discardPile = new FrameLayout(this);
         discardPile.setId(R.id.discard_pile);
         discardPile.setBackgroundResource(R.drawable.card_back_v);
-        discardPile.addView(centreLabel("DISC"), match());
         add(screenTable, discardPile, DISC_BOX);
         discardPile.setOnClickListener(v -> onDiscardTapped());
 
@@ -536,12 +535,8 @@ public class MainActivity extends Activity {
                 + " + Jokers");
         labelStatus.setText(engine.statusLine());
 
-        updatePile(drawPile, engine.drawPile().isEmpty() ? null
-                : engine.drawPile().get(0), "DRAW (" + engine.drawPile().size() + ")",
-                R.drawable.card_back_v);
-        Card top = engine.topDiscard();
-        updatePile(discardPile, top, top == null ? "DISC" : top.shortLabel(),
-                top == null ? R.drawable.card_back_v : faceDrawable(top));
+        updateDrawPile(drawPile, engine.drawPile().size());
+        updateDiscardPile(discardPile, engine.topDiscard());
 
         Player h = engine.human();
         cloudPlayer.setText("Wild  " + engine.wildLabel());
@@ -551,12 +546,35 @@ public class MainActivity extends Activity {
         updateButtons();
     }
 
-    private void updatePile(FrameLayout pile, Card card, String label, int bg) {
-        pile.setBackgroundResource(bg);
-        TextView faceLabel = (TextView) pile.getChildAt(0);
-        faceLabel.setText(label);
-        faceLabel.setTextColor(card == null ? Color.WHITE : Color.BLACK);
-        faceLabel.setTypeface(card == null ? Typeface.DEFAULT : Typeface.DEFAULT_BOLD);
+    /** Keep the draw pile face down and clear of text crossing its back artwork. */
+    private void updateDrawPile(FrameLayout pile, int count) {
+        pile.removeAllViews();
+        pile.setBackgroundResource(R.drawable.card_back_v);
+
+        TextView countLabel = new TextView(this);
+        countLabel.setText(Integer.toString(count));
+        countLabel.setTextColor(Color.WHITE);
+        countLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 8);
+        countLabel.setTypeface(Typeface.DEFAULT_BOLD);
+        countLabel.setGravity(Gravity.CENTER);
+        countLabel.setBackgroundColor(0x990D0B12);
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, dp(16), Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        lp.leftMargin = dp(5);
+        lp.rightMargin = dp(5);
+        lp.bottomMargin = dp(5);
+        pile.addView(countLabel, lp);
+    }
+
+    /** Render the discard with the same complete card face used in the player's hand. */
+    private void updateDiscardPile(FrameLayout pile, Card card) {
+        pile.removeAllViews();
+        if (card == null) {
+            pile.setBackgroundResource(R.drawable.card_back_v);
+            return;
+        }
+        pile.setBackgroundColor(Color.TRANSPARENT);
+        pile.addView(buildCardView(card), match());
     }
 
     private void renderMelds(LinearLayout tray, List<Meld> melds) {
