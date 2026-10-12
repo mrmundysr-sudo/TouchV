@@ -1138,7 +1138,7 @@ public class MainActivity extends Activity {
             // These centers match the characters painted into each TouchV table plate.
             float[][] glow1 = {{0.50f, 0.28f}};
             float[][] glow2 = {{0.24f, 0.27f}, {0.74f, 0.27f}};
-            float[][] glow3 = {{0.21f, 0.27f}, {0.50f, 0.34f}, {0.79f, 0.27f}};
+            float[][] glow3 = {{0.21f, 0.27f}, {0.50f, 0.41f}, {0.79f, 0.27f}};
             float[][] positions = opponents == 1 ? glow1 : opponents == 2 ? glow2 : glow3;
             int index = seat - 1;
             if (index < 0 || index >= positions.length) return;
