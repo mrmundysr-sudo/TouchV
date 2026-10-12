@@ -535,7 +535,7 @@ public class MainActivity extends Activity {
                 + " + Jokers");
         labelStatus.setText(engine.statusLine());
 
-        updateDrawPile(drawPile, engine.drawPile().size());
+        updateDrawPile(drawPile);
         updateDiscardPile(discardPile, engine.topDiscard());
 
         Player h = engine.human();
@@ -547,7 +547,7 @@ public class MainActivity extends Activity {
     }
 
     /** Keep the draw pile face down; all text stays off the approved card back. */
-    private void updateDrawPile(FrameLayout pile, int count) {
+    private void updateDrawPile(FrameLayout pile) {
         pile.removeAllViews();
         pile.setBackgroundResource(R.drawable.card_back_v);
     }
