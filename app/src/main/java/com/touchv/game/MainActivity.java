@@ -546,24 +546,10 @@ public class MainActivity extends Activity {
         updateButtons();
     }
 
-    /** Keep the draw pile face down and clear of text crossing its back artwork. */
+    /** Keep the draw pile face down; all text stays off the approved card back. */
     private void updateDrawPile(FrameLayout pile, int count) {
         pile.removeAllViews();
         pile.setBackgroundResource(R.drawable.card_back_v);
-
-        TextView countLabel = new TextView(this);
-        countLabel.setText(Integer.toString(count));
-        countLabel.setTextColor(Color.WHITE);
-        countLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 8);
-        countLabel.setTypeface(Typeface.DEFAULT_BOLD);
-        countLabel.setGravity(Gravity.CENTER);
-        countLabel.setBackgroundColor(0x990D0B12);
-        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, dp(16), Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
-        lp.leftMargin = dp(5);
-        lp.rightMargin = dp(5);
-        lp.bottomMargin = dp(5);
-        pile.addView(countLabel, lp);
     }
 
     /** Render the discard with the same complete card face used in the player's hand. */
