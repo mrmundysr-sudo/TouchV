@@ -490,6 +490,7 @@ public class MainActivity extends Activity {
 
     private void showTitle() {
         hideOverlays();
+        removeCallbacks(aiTurnRunnable);
         screenTable.setVisibility(View.GONE);
         screenYouWin.setVisibility(View.GONE);
         screenTryAgain.setVisibility(View.GONE);
@@ -497,6 +498,7 @@ public class MainActivity extends Activity {
     }
 
     private void startGame(int opponents) {
+        removeCallbacks(aiTurnRunnable);
         engine.newGame(opponents);
         screenTitle.setVisibility(View.GONE);
         screenYouWin.setVisibility(View.GONE);
@@ -896,21 +898,48 @@ public class MainActivity extends Activity {
     // ------------------------------------------------------------------
 
     private void maybeRunAi() {
-        int guard = 0;
-        while (guard++ < 5000) {
-            GameEngine.Phase ph = engine.phase();
-            if (ph == GameEngine.Phase.ROUND_OVER || engine.isGameOver()) {
+        GameEngine.Phase phase = engine.phase();
+        if (phase == GameEngine.Phase.ROUND_OVER || engine.isGameOver()) {
+            showScoreOverlay();
+            return;
+        }
+        if ((phase == GameEngine.Phase.WAIT_DRAW || phase == GameEngine.Phase.NOT_MY_TURN)
+                && engine.currentIndex() != 0 && engine.aiShouldAct()) {
+            // Match Touch One's pacing: give the active opponent time in the
+            // spotlight, then perform exactly one AI turn before scheduling the next.
+            removeCallbacks(aiTurnRunnable);
+            long delay = phase == GameEngine.Phase.NOT_MY_TURN ? 2200L : 900L;
+            postDelayed(aiTurnRunnable, delay);
+        } else {
+            removeCallbacks(aiTurnRunnable);
+            refreshTable();
+        }
+    }
+
+    private final Runnable aiTurnRunnable = new Runnable() {
+        @Override
+        public void run() {
+            GameEngine.Phase phase = engine.phase();
+            if (phase == GameEngine.Phase.ROUND_OVER || engine.isGameOver()) {
                 showScoreOverlay();
                 return;
             }
-            if ((ph == GameEngine.Phase.WAIT_DRAW || ph == GameEngine.Phase.NOT_MY_TURN)
-                    && engine.currentIndex() != 0) {
+            if ((phase == GameEngine.Phase.WAIT_DRAW || phase == GameEngine.Phase.NOT_MY_TURN)
+                    && engine.currentIndex() != 0 && engine.aiShouldAct()) {
                 engine.playAiTurnFor(engine.currentIndex());
-                continue;
             }
-            break;
+            refreshTable();
+            // One delayed callback per opponent lets each active portrait ring flash.
+            maybeRunAi();
         }
-        refreshTable();
+    };
+
+    private void postDelayed(Runnable action, long delay) {
+        screenTable.postDelayed(action, delay);
+    }
+
+    private void removeCallbacks(Runnable action) {
+        if (screenTable != null) screenTable.removeCallbacks(action);
     }
 
     // ------------------------------------------------------------------
