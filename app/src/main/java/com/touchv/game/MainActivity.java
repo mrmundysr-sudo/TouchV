@@ -205,7 +205,7 @@ public class MainActivity extends Activity {
         float spread = count == 2 ? 0.22f : 0.20f;
         for (int i = 0; i < count; i++) {
             ImageView back = new ImageView(this);
-            back.setImageResource(R.drawable.card_back);
+            back.setImageResource(R.drawable.card_back_v);
             back.setScaleType(ImageView.ScaleType.FIT_CENTER);
             back.setClickable(false);
             back.setRotation(count == 1 ? 0f : (i - (count - 1) / 2f) * (count == 2 ? 14f : 18f));
@@ -239,14 +239,14 @@ public class MainActivity extends Activity {
         // Mark 2: draw pile. Mark 3: discard pile.
         drawPile = new FrameLayout(this);
         drawPile.setId(R.id.draw_pile);
-        drawPile.setBackgroundResource(R.drawable.card_back);
+        drawPile.setBackgroundResource(R.drawable.card_back_v);
         drawPile.addView(centreLabel("DRAW"), match());
         add(screenTable, drawPile, DRAW_BOX);
         drawPile.setOnClickListener(v -> onDrawTapped());
 
         discardPile = new FrameLayout(this);
         discardPile.setId(R.id.discard_pile);
-        discardPile.setBackgroundResource(R.drawable.card_back);
+        discardPile.setBackgroundResource(R.drawable.card_back_v);
         discardPile.addView(centreLabel("DISC"), match());
         add(screenTable, discardPile, DISC_BOX);
         discardPile.setOnClickListener(v -> onDiscardTapped());
@@ -538,10 +538,10 @@ public class MainActivity extends Activity {
 
         updatePile(drawPile, engine.drawPile().isEmpty() ? null
                 : engine.drawPile().get(0), "DRAW (" + engine.drawPile().size() + ")",
-                R.drawable.card_back);
+                R.drawable.card_back_v);
         Card top = engine.topDiscard();
         updatePile(discardPile, top, top == null ? "DISC" : top.shortLabel(),
-                top == null ? R.drawable.card_back : faceDrawable(top));
+                top == null ? R.drawable.card_back_v : faceDrawable(top));
 
         Player h = engine.human();
         cloudPlayer.setText("Wild  " + engine.wildLabel());
@@ -973,7 +973,7 @@ public class MainActivity extends Activity {
             FrameLayout cell = new FrameLayout(this);
             // Keep the branded slot back underneath the rotated face card so
             // its TouchV! frame peeks out above and below occupied slots.
-            cell.setBackgroundResource(R.drawable.sort_slot_back);
+            cell.setBackgroundResource(R.drawable.card_back_v);
             if (slot < hand.size()) {
                 final int idx = slot;
                 View cv = buildCardView(hand.get(idx));
