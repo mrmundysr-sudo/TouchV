@@ -1,7 +1,11 @@
 package com.touchv.game;
 
 import android.app.Activity;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.RadialGradient;
+import android.graphics.Shader;
 import android.graphics.Typeface;
 import android.os.Bundle;
 import android.util.TypedValue;
@@ -60,6 +64,7 @@ public class MainActivity extends Activity {
     private PlateLayout fanBox;
     private LinearLayout fanTop, fanBottom;
     private FrameLayout drawPile, discardPile;
+    private TurnGlowView turnGlow;
     private TextView labelRound, labelWild, labelStatus, labelScores;
     private TextView cloudPlayer;
     private LinearLayout meldPlayer;
@@ -224,6 +229,8 @@ public class MainActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         ImageView tablePlate = plate(R.drawable.bg_table_1);
         screenTable.add(tablePlate, 0f, 0f, 1f, 1f);
+        turnGlow = new TurnGlowView();
+        screenTable.add(turnGlow, 0f, 0f, 1f, 1f);
 
         labelRound = chrome(R.id.label_round);
         labelWild = chrome(R.id.label_wild);
@@ -544,6 +551,7 @@ public class MainActivity extends Activity {
         renderMelds(meldPlayer, engine.meldsFor(0));
         renderFan();
         updateButtons();
+        if (turnGlow != null) turnGlow.invalidate();
     }
 
     /** Keep the draw pile face down; all text stays off the approved card back. */
@@ -1076,4 +1084,63 @@ public class MainActivity extends Activity {
         return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value,
                 getResources().getDisplayMetrics());
     }
+    /**
+     * Touch One's pulsing gold turn marker, placed over the active opponent's
+     * portrait. The animation timing, glow, ring and opacity follow that code.
+     */
+    private final class TurnGlowView extends View {
+        private final Paint glowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+        TurnGlowView() {
+            super(MainActivity.this);
+            setWillNotDraw(false);
+            setClickable(false);
+        }
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas);
+            if (engine == null) return;
+
+            int seat = engine.currentIndex();
+            int opponents = engine.opponentCount();
+            if (seat <= 0 || engine.isGameOver() || opponents < 1) return;
+
+            // These centers match the characters painted into each TouchV table plate.
+            float[][] glow1 = {{0.50f, 0.28f}};
+            float[][] glow2 = {{0.24f, 0.27f}, {0.74f, 0.27f}};
+            float[][] glow3 = {{0.21f, 0.27f}, {0.50f, 0.28f}, {0.79f, 0.27f}};
+            float[][] positions = opponents == 1 ? glow1 : opponents == 2 ? glow2 : glow3;
+            int index = seat - 1;
+            if (index < 0 || index >= positions.length) return;
+
+            float width = getWidth();
+            float cx = width * positions[index][0];
+            float cy = getHeight() * positions[index][1];
+            float base = width * (opponents == 1 ? 0.38f : 0.28f);
+            double t = System.currentTimeMillis() / 420.0;
+            float pulse = 1f + 0.045f * (float) Math.sin(t * Math.PI * 2.0);
+            float radius = base * (0.92f + (pulse - 1f) * 4f);
+
+            glowPaint.setStyle(Paint.Style.FILL);
+            glowPaint.setShader(new RadialGradient(cx, cy, radius,
+                    Color.argb(90, 255, 230, 80), Color.argb(0, 255, 200, 40),
+                    Shader.TileMode.CLAMP));
+            canvas.drawCircle(cx, cy, radius, glowPaint);
+            glowPaint.setShader(null);
+
+            glowPaint.setStyle(Paint.Style.STROKE);
+            glowPaint.setStrokeWidth(Math.max(6f, width * 0.012f));
+            int alpha = 80 + (int) (70 * ((pulse - 1f) / 0.045f * 0.5f + 0.5f));
+            alpha = Math.max(40, Math.min(180, alpha));
+            glowPaint.setColor(Color.argb(alpha, 255, 220, 70));
+            canvas.drawCircle(cx, cy, radius * 0.62f, glowPaint);
+            glowPaint.setStyle(Paint.Style.FILL);
+
+            // Keep the glow moving only while an opponent is taking a turn.
+            postInvalidateOnAnimation();
+        }
+    }
+
+
 }
