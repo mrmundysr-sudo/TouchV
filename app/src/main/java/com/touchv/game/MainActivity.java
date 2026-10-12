@@ -673,15 +673,25 @@ public class MainActivity extends Activity {
         centerMark.addView(pip, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
-        TextView suitMark = new TextView(this);
-        suitMark.setText(card.isJoker() ? "✦" : suitSymbol(card.suit));
-        suitMark.setTextColor(card.isJoker() ? 0xFF9B6A12 : suitInk(card.suit));
-        suitMark.setTextSize(TypedValue.COMPLEX_UNIT_SP, card.isJoker() ? 25 : 23);
-        suitMark.setTypeface(Typeface.SERIF, Typeface.BOLD);
-        suitMark.setGravity(Gravity.CENTER);
-        suitMark.setIncludeFontPadding(false);
-        centerMark.addView(suitMark, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        if (!card.isJoker() && card.suit == Card.Suit.PURPLE) {
+            ImageView fleurMark = new ImageView(this);
+            fleurMark.setImageResource(R.drawable.fleur_gold);
+            fleurMark.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            fleurMark.setContentDescription("Gold fleur suit symbol");
+            LinearLayout.LayoutParams fleurLp = new LinearLayout.LayoutParams(dp(30), dp(30));
+            fleurLp.gravity = Gravity.CENTER_HORIZONTAL;
+            centerMark.addView(fleurMark, fleurLp);
+        } else {
+            TextView suitMark = new TextView(this);
+            suitMark.setText(card.isJoker() ? "✦" : suitSymbol(card.suit));
+            suitMark.setTextColor(card.isJoker() ? 0xFF9B6A12 : suitInk(card.suit));
+            suitMark.setTextSize(TypedValue.COMPLEX_UNIT_SP, card.isJoker() ? 25 : 23);
+            suitMark.setTypeface(Typeface.SERIF, Typeface.BOLD);
+            suitMark.setGravity(Gravity.CENTER);
+            suitMark.setIncludeFontPadding(false);
+            centerMark.addView(suitMark, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        }
         FrameLayout.LayoutParams centerLp = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
         centerLp.leftMargin = dp(8);
@@ -731,7 +741,7 @@ public class MainActivity extends Activity {
         switch (suit) {
             case GREEN: return 0xFF15552B;
             case PINK: return 0xFF9F1748;
-            case PURPLE: return 0xFF542078;
+            case PURPLE: return 0xFFFFC928;
             case ORANGE: return 0xFF9D3B08;
             case GOLD: return 0xFF79520A;
             default: return 0xFF825910;
