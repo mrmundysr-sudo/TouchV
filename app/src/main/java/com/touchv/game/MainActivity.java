@@ -652,16 +652,19 @@ public class MainActivity extends Activity {
         f.setBackgroundResource(card.isJoker() ? R.drawable.card_face_joker : faceDrawable(card));
         f.setElevation(dp(2));
 
+        // Touch One inspired face: bold rank in the center, suit mark below,
+        // and matching rank indexes in both opposite corners.
         LinearLayout centerMark = new LinearLayout(this);
         centerMark.setOrientation(LinearLayout.VERTICAL);
         centerMark.setGravity(Gravity.CENTER);
         TextView pip = new TextView(this);
-        pip.setText(card.isJoker() ? "JOKER" : card.rankLabel());
+        pip.setText(card.isJoker() ? "WILD" : card.rankLabel());
         pip.setTextColor(card.isJoker() ? 0xFF7A4A00 : 0xFF17121A);
         pip.setTextSize(TypedValue.COMPLEX_UNIT_SP,
-                card.isJoker() ? 11 : (card.rank >= 11 ? 19 : 20));
-        pip.setTypeface(Typeface.SERIF, Typeface.BOLD);
+                card.isJoker() ? 13 : (card.rank >= 11 ? 22 : 27));
+        pip.setTypeface(Typeface.create("sans-serif-condensed", Typeface.BOLD));
         pip.setGravity(Gravity.CENTER);
+        pip.setIncludeFontPadding(false);
         pip.setShadowLayer(1f, 0f, 1f, 0x66FFFFFF);
         centerMark.addView(pip, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
@@ -669,9 +672,10 @@ public class MainActivity extends Activity {
         TextView suitMark = new TextView(this);
         suitMark.setText(card.isJoker() ? "✦" : suitSymbol(card.suit));
         suitMark.setTextColor(card.isJoker() ? 0xFF9B6A12 : suitInk(card.suit));
-        suitMark.setTextSize(TypedValue.COMPLEX_UNIT_SP, card.isJoker() ? 21 : 18);
+        suitMark.setTextSize(TypedValue.COMPLEX_UNIT_SP, card.isJoker() ? 25 : 23);
         suitMark.setTypeface(Typeface.SERIF, Typeface.BOLD);
         suitMark.setGravity(Gravity.CENTER);
+        suitMark.setIncludeFontPadding(false);
         centerMark.addView(suitMark, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         FrameLayout.LayoutParams centerLp = new FrameLayout.LayoutParams(
@@ -680,16 +684,31 @@ public class MainActivity extends Activity {
         centerLp.rightMargin = dp(8);
         f.addView(centerMark, centerLp);
 
-        TextView corner = new TextView(this);
-        corner.setText(card.isJoker() ? "★" : card.rankLabel() + suitSymbol(card.suit));
-        corner.setTextColor(card.isJoker() ? 0xFF825910 : 0xFF17121A);
-        corner.setTextSize(TypedValue.COMPLEX_UNIT_SP, 9);
-        corner.setTypeface(Typeface.SERIF, Typeface.BOLD);
-        FrameLayout.LayoutParams clp = new FrameLayout.LayoutParams(
+        TextView topCorner = new TextView(this);
+        topCorner.setText(card.isJoker() ? "★" : card.rankLabel());
+        topCorner.setTextColor(card.isJoker() ? 0xFF825910 : 0xFF17121A);
+        topCorner.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
+        topCorner.setTypeface(Typeface.create("sans-serif-condensed", Typeface.BOLD));
+        topCorner.setIncludeFontPadding(false);
+        FrameLayout.LayoutParams tlp = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        clp.leftMargin = dp(3);
-        clp.topMargin = dp(1);
-        f.addView(corner, clp);
+        tlp.leftMargin = dp(5);
+        tlp.topMargin = dp(3);
+        f.addView(topCorner, tlp);
+
+        TextView bottomCorner = new TextView(this);
+        bottomCorner.setText(card.isJoker() ? "★" : card.rankLabel());
+        bottomCorner.setTextColor(card.isJoker() ? 0xFF825910 : 0xFF17121A);
+        bottomCorner.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
+        bottomCorner.setTypeface(Typeface.create("sans-serif-condensed", Typeface.BOLD));
+        bottomCorner.setIncludeFontPadding(false);
+        bottomCorner.setRotation(180f);
+        FrameLayout.LayoutParams blp = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM | Gravity.RIGHT);
+        blp.rightMargin = dp(5);
+        blp.bottomMargin = dp(3);
+        f.addView(bottomCorner, blp);
         return f;
     }
 
