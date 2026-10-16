@@ -926,7 +926,7 @@ public class MainActivity extends Activity {
             // Match Touch One's pacing: give the active opponent time in the
             // spotlight, then perform exactly one AI turn before scheduling the next.
             removeCallbacks(aiTurnRunnable);
-            long delay = phase == GameEngine.Phase.NOT_MY_TURN ? 2200L : 900L;
+            // Vary each opponent's thinking time so turns feel less mechanical.\n            // Normal: 1.6–3.2 seconds; transition: 2.2–3.8 seconds.\n            long delay = phase == GameEngine.Phase.NOT_MY_TURN\n                    ? 2200L + rnd.nextInt(1601)\n                    : 1600L + rnd.nextInt(1601);
             postDelayed(aiTurnRunnable, delay);
         } else {
             removeCallbacks(aiTurnRunnable);
