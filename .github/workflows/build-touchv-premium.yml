@@ -1,0 +1,60 @@
+name: Build TouchV Premium APK
+on:
+  push:
+    branches: [new-claude-fix-touch-v]
+    paths:
+      - '.github/workflows/build-touchv-premium.yml'
+      - 'TouchV-premium.zip'
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract Claude premium source
+        run: |
+          python3 - <<'PY'
+          import zipfile, pathlib
+          p=pathlib.Path('TouchV-premium.zip')
+          assert p.exists(), 'TouchV-premium.zip missing'
+          out=pathlib.Path('/tmp/touchv-premium')
+          out.mkdir()
+          with zipfile.ZipFile(p) as z:
+              for i in z.infolist():
+                  target=(out/i.filename).resolve()
+                  if not target.is_relative_to(out.resolve()):
+                      raise ValueError('Unsafe archive entry')
+              z.extractall(out)
+          candidates=list(out.rglob('settings.gradle'))+list(out.rglob('settings.gradle.kts'))
+          assert candidates, 'No Gradle Android project found inside ZIP'
+          project=min((x.parent for x in candidates),key=lambda x:len(x.parts))
+          pathlib.Path('/tmp/touchv-project').write_text(str(project))
+          print('Project:',project)
+          PY
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build debug APK
+        run: |
+          cd "$(cat /tmp/touchv-project)"
+          if [ -f gradlew ]; then
+            chmod +x gradlew
+            ./gradlew --no-daemon assembleDebug
+          else
+            gradle --no-daemon assembleDebug
+          fi
+      - name: Collect APK
+        run: |
+          mkdir -p output
+          find "$(cat /tmp/touchv-project)" -path '*/build/outputs/apk/debug/*.apk' -type f -print -exec cp {} output/ \;
+          test -n "$(find output -name '*.apk' -print -quit)"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TouchV-premium-debug-apk
+          path: output/*.apk
+          if-no-files-found: error
