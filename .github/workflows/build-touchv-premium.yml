@@ -51,7 +51,8 @@ jobs:
       - name: Collect APK
         run: |
           mkdir -p output
-          find "$(cat /tmp/touchv-project)" -path '*/build/outputs/apk/debug/*.apk' -type f -print -exec cp {} output/ \;
+          find "$(cat /tmp/touchv-project)" -type f -name '*.apk' -path '*/build/outputs/apk/*' -print -exec cp {} output/ \;
+          ls -lh output
           test -n "$(find output -name '*.apk' -print -quit)"
       - uses: actions/upload-artifact@v4
         with:
