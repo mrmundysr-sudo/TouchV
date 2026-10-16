@@ -1,16 +1,22 @@
 package com.touchv.game;
 
 import android.app.Activity;
+import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.RadialGradient;
 import android.graphics.Shader;
 import android.graphics.Typeface;
+import android.media.AudioManager;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
 import android.util.TypedValue;
 import android.view.GestureDetector;
 import android.view.Gravity;
+import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -64,12 +70,13 @@ public class MainActivity extends Activity {
     private PlateLayout fanBox;
     private LinearLayout fanTop, fanBottom;
     private FrameLayout drawPile, discardPile;
+    private ImageView tablePlate;
     private TurnGlowView turnGlow;
     private TextView labelRound, labelWild, labelStatus, labelScores;
     private TextView cloudPlayer;
     private LinearLayout meldPlayer;
     private Button btnDeclareOut, btnLayMelds, btnParkEnd;
-    private ImageButton btnPlayAgain;
+    private View btnPlayAgain;
     private View btnOpp1, btnOpp2, btnOpp3;
     private TextView scoreGirl, scoreBoy, scoreCat, scorePlayer;
 
@@ -78,6 +85,7 @@ public class MainActivity extends Activity {
     private int sortSelected = -1;
 
     private GestureDetector swipeUp;
+    private Vibrator vibrator;
 
     // ------------------------------------------------------------------
     // Lifecycle
@@ -87,6 +95,7 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         swipeUp = createSwipeUp();
+        vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
         engine = new GameEngine(rnd);
         buildUi();
         showTitle();
@@ -119,6 +128,28 @@ public class MainActivity extends Activity {
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) goFullscreen();
+    }
+
+    /**
+     * Cancel any scheduled AI turn while the Activity is not interactive so the
+     * game cannot advance behind the player's back; onResume restores the flow.
+     */
+    @Override
+    protected void onPause() {
+        super.onPause();
+        removeCallbacks(aiTurnRunnable);
+        if (turnGlow != null) turnGlow.stopPulse();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        goFullscreen();
+        if (engine != null && screenTable != null && screenTable.getVisibility() == View.VISIBLE
+                && overlayScores.getVisibility() != View.VISIBLE) {
+            refreshTable();
+            maybeRunAi();
+        }
     }
 
     @Override
@@ -170,6 +201,7 @@ public class MainActivity extends Activity {
         b.setAllCaps(false);
         b.setBackgroundResource(R.drawable.btn_plate);
         b.setTextColor(Color.WHITE);
+        b.setContentDescription(text);
         return b;
     }
 
@@ -227,7 +259,7 @@ public class MainActivity extends Activity {
         screenTable.setId(R.id.screen_table);
         root.addView(screenTable, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        ImageView tablePlate = plate(R.drawable.bg_table_1);
+        tablePlate = plate(R.drawable.bg_table_1);
         screenTable.add(tablePlate, 0f, 0f, 1f, 1f);
         turnGlow = new TurnGlowView();
         screenTable.add(turnGlow, 0f, 0f, 1f, 1f);
@@ -247,6 +279,7 @@ public class MainActivity extends Activity {
         drawPile = new FrameLayout(this);
         drawPile.setId(R.id.draw_pile);
         drawPile.setBackgroundResource(R.drawable.card_back_v);
+        drawPile.setContentDescription("Draw pile");
         drawPile.addView(centreLabel("DRAW"), match());
         add(screenTable, drawPile, DRAW_BOX);
         drawPile.setOnClickListener(v -> onDrawTapped());
@@ -254,6 +287,7 @@ public class MainActivity extends Activity {
         discardPile = new FrameLayout(this);
         discardPile.setId(R.id.discard_pile);
         discardPile.setBackgroundResource(R.drawable.card_back_v);
+        discardPile.setContentDescription("Discard pile");
         add(screenTable, discardPile, DISC_BOX);
         discardPile.setOnClickListener(v -> onDiscardTapped());
 
@@ -352,12 +386,28 @@ public class MainActivity extends Activity {
         ImageButton pa = new ImageButton(this);
         pa.setId(R.id.btn_play_again);
         pa.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        pa.setImageResource(R.drawable.btn_play_again);
         pa.setBackgroundColor(Color.TRANSPARENT);
         pa.setPadding(0, 0, 0, 0);
-        p.add(pa, paBox[0], paBox[1], paBox[2], paBox[3]);
-        pa.setOnClickListener(v -> showTitle());
-        if (isWin) btnPlayAgain = pa;
+        View playAgain;
+        android.graphics.drawable.Drawable art = null;
+        try {
+            // A failed decode surfaces as a Resources.NotFoundException at load
+            // time, but guard broadly so any malformed-asset path stays safe.
+            art = getResources().getDrawable(R.drawable.btn_play_again, getTheme());
+        } catch (RuntimeException loadError) {
+            art = null;
+        }
+        if (art != null) {
+            pa.setImageDrawable(art);
+            playAgain = pa;
+        } else {
+            // The shipped button bitmap fails to decode. Never leave an empty or
+            // crashing control on the result screen; use the labelled fallback.
+            playAgain = makeButton(R.id.btn_play_again, "PLAY AGAIN");
+        }
+        playAgain.setOnClickListener(v -> showTitle());
+        p.add(playAgain, paBox[0], paBox[1], paBox[2], paBox[3]);
+        if (isWin) btnPlayAgain = playAgain;
 
         p.setVisibility(View.GONE);
         return p;
@@ -504,7 +554,7 @@ public class MainActivity extends Activity {
         screenYouWin.setVisibility(View.GONE);
         screenTryAgain.setVisibility(View.GONE);
         screenTable.setVisibility(View.VISIBLE);
-        ((ImageView) screenTable.getChildAt(0)).setImageResource(tablePlate(opponents));
+        tablePlate.setImageResource(tablePlate(opponents));
         selectedHandIndex = -1;
         drawnHandIndex = -1;
         refreshTable();
@@ -542,7 +592,8 @@ public class MainActivity extends Activity {
                 + (engine.isTiebreak() ? "  (tiebreak)" : ""));
         labelWild.setText("Dealt " + engine.dealtCount() + "  |  Wild " + engine.wildLabel()
                 + " + Jokers");
-        labelStatus.setText(engine.statusLine());
+        labelStatus.setText(turnLine());
+        labelStatus.setTextColor(statusColor());
 
         updateDrawPile(drawPile);
         updateDiscardPile(discardPile, engine.topDiscard());
@@ -665,6 +716,7 @@ public class MainActivity extends Activity {
         FrameLayout f = new FrameLayout(this);
         f.setBackgroundResource(card.isJoker() ? R.drawable.card_face_joker : faceDrawable(card));
         f.setElevation(dp(2));
+        f.setContentDescription(card.fullLabel());
 
         // Touch One inspired face: bold rank in the center, suit mark below,
         // and matching rank indexes in both opposite corners.
@@ -767,6 +819,28 @@ public class MainActivity extends Activity {
         btnParkEnd.setVisibility(insertPending ? View.VISIBLE : View.GONE);
     }
 
+    /**
+     * Status text. The engine message describes the last action; this prepends
+     * whose turn it currently is so a skipped-looking AI turn still reads clearly.
+     */
+    private String turnLine() {
+        GameEngine.Phase ph = engine.phase();
+        if (ph == GameEngine.Phase.ROUND_OVER || ph == GameEngine.Phase.GAME_OVER) {
+            return engine.statusLine();
+        }
+        int seat = engine.currentIndex();
+        if (seat == 0) {
+            String base = engine.statusLine();
+            return base.startsWith("You") ? base : "Your turn.  " + base;
+        }
+        return engine.player(seat).name + "'s turn";
+    }
+
+    /** Gold status ink while it is the human's turn, plain white otherwise. */
+    private int statusColor() {
+        return engine.currentIndex() == 0 ? 0xFFFFE082 : Color.WHITE;
+    }
+
     private int faceDrawable(Card card) {
         switch (card.suit) {
             case GREEN: return R.drawable.card_face_green;
@@ -790,6 +864,7 @@ public class MainActivity extends Activity {
             else engine.parkPending(0, index);
             drawnHandIndex = -1;
             selectedHandIndex = -1;
+            tapHaptic();
             refreshTable();
             return;
         }
@@ -801,12 +876,15 @@ public class MainActivity extends Activity {
             return;
         }
         selectedHandIndex = (selectedHandIndex == index) ? -1 : index;
+        tapHaptic();
+        clickSound();
         refreshTable();
     }
 
     private void onEmptyFanTapped() {
         if (engine.phase() == GameEngine.Phase.WAIT_DISCARD && selectedHandIndex >= 0) {
             selectedHandIndex = -1;
+            tapHaptic();
             refreshTable();
         }
     }
@@ -821,6 +899,7 @@ public class MainActivity extends Activity {
         engine.drawHuman(0, false);
         drawnHandIndex = engine.pendingHandIndex();
         selectedHandIndex = -1;
+        clickSound();
         refreshTable();
     }
 
@@ -831,6 +910,7 @@ public class MainActivity extends Activity {
             engine.drawHuman(0, true);
             drawnHandIndex = engine.pendingHandIndex();
             selectedHandIndex = -1;
+            clickSound();
             refreshTable();
             return;
         }
@@ -852,6 +932,8 @@ public class MainActivity extends Activity {
             }
             selectedHandIndex = -1;
             drawnHandIndex = -1;
+            commitHaptic();
+            confirmSound();
             finishTurnAndRefresh();
         }
     }
@@ -860,6 +942,7 @@ public class MainActivity extends Activity {
         if (engine.phase() == GameEngine.Phase.INSERT_PENDING) {
             engine.parkPendingAtEnd(0);
             drawnHandIndex = -1;
+            tapHaptic();
             refreshTable();
         }
     }
@@ -869,6 +952,8 @@ public class MainActivity extends Activity {
             engine.declareOut(0);
             selectedHandIndex = -1;
             drawnHandIndex = -1;
+            commitHaptic();
+            confirmSound();
             finishTurnAndRefresh();
         }
     }
@@ -876,6 +961,8 @@ public class MainActivity extends Activity {
     private void onLayMelds() {
         if (engine.isFinalTurn(0)) {
             engine.layMelds(0);
+            commitHaptic();
+            confirmSound();
             showMeldOverlay();
         }
     }
@@ -1045,7 +1132,9 @@ public class MainActivity extends Activity {
         } else {
             Collections.swap(engine.handOf(0), sortSelected, index);
             sortSelected = -1;
+            commitHaptic();
         }
+        tapHaptic();
         renderSortOverlay();
     }
 
@@ -1113,17 +1202,80 @@ public class MainActivity extends Activity {
         return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value,
                 getResources().getDisplayMetrics());
     }
+
+    // ------------------------------------------------------------------
+    // Feedback: short haptics and standard system UI tones at meaningful beats.
+    // No new audio assets are introduced; the tones come from the device.
+    // ------------------------------------------------------------------
+
+    /** A light tick for a selection or a lock/unlock. */
+    private void tapHaptic() {
+        try {
+            screenTable.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP,
+                    HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING);
+        } catch (RuntimeException ignored) {
+            // Haptics are best-effort; never let feedback break the turn.
+        }
+    }
+
+    /** A firmer buzz for a committed action (discard, meld, declare out). */
+    private void commitHaptic() {
+        if (vibrator == null || !vibrator.hasVibrator()) return;
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator.vibrate(VibrationEffect.createOneShot(28,
+                        VibrationEffect.DEFAULT_AMPLITUDE));
+            } else {
+                vibrator.vibrate(28);
+            }
+        } catch (RuntimeException ignored) {
+            // Haptics are best-effort.
+        }
+    }
+
+    /** A short standard tap tone. Silent when the user's system sound is off. */
+    private void clickSound() {
+        playSound(android.view.SoundEffectConstants.CLICK);
+    }
+
+    /** A slightly different tick used when a play is committed. */
+    private void confirmSound() {
+        playSound(android.view.SoundEffectConstants.NAVIGATION_DOWN);
+    }
+
+    private void playSound(int effect) {
+        try {
+            AudioManager audio = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            if (audio != null && audio.getRingerMode() == AudioManager.RINGER_MODE_NORMAL) {
+                screenTable.playSoundEffect(effect);
+            }
+        } catch (RuntimeException ignored) {
+            // Sound is best-effort.
+        }
+    }
+
     /**
      * Touch One's pulsing gold turn marker, placed over the active opponent's
      * portrait. The animation timing, glow, ring and opacity follow that code.
      */
     private final class TurnGlowView extends View {
         private final Paint glowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Runnable pulseTick = new Runnable() {
+            @Override
+            public void run() {
+                invalidate();
+            }
+        };
 
         TurnGlowView() {
             super(MainActivity.this);
             setWillNotDraw(false);
             setClickable(false);
+        }
+
+        /** Stop the pulse loop; safe to call from onPause or when no AI is active. */
+        void stopPulse() {
+            removeCallbacks(pulseTick);
         }
 
         @Override
@@ -1133,7 +1285,11 @@ public class MainActivity extends Activity {
 
             int seat = engine.currentIndex();
             int opponents = engine.opponentCount();
-            if (seat <= 0 || engine.isGameOver() || opponents < 1) return;
+            if (seat <= 0 || engine.isGameOver() || opponents < 1
+                    || screenTable.getVisibility() != View.VISIBLE) {
+                stopPulse();
+                return;
+            }
 
             // These centers match the characters painted into each TouchV table plate.
             float[][] glow1 = {{0.50f, 0.28f}};
@@ -1167,7 +1323,7 @@ public class MainActivity extends Activity {
             glowPaint.setStyle(Paint.Style.FILL);
 
             // Keep the glow moving only while an opponent is taking a turn.
-            postInvalidateOnAnimation();
+            postDelayed(pulseTick, 33L);
         }
     }
 

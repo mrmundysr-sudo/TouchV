@@ -42,13 +42,21 @@ public final class PlateLayout extends ViewGroup {
         setMeasuredDimension(w, h);
         for (int i = 0; i < getChildCount(); i++) {
             View child = getChildAt(i);
+            // A GONE child still has to be measured per the ViewGroup contract,
+            // but its fractional bounds are meaningless, so keep it at zero
+            // instead of spending a full plate-sized measure on hidden hooks.
+            if (child.getVisibility() == View.GONE) {
+                child.measure(MeasureSpec.makeMeasureSpec(0, MeasureSpec.EXACTLY),
+                        MeasureSpec.makeMeasureSpec(0, MeasureSpec.EXACTLY));
+                continue;
+            }
             ViewGroup.LayoutParams p = child.getLayoutParams();
             if (p instanceof LP) {
                 LP lp = (LP) p;
                 int cw = lp.fw > 0 ? Math.round(lp.fw * w) : w;
                 int ch = lp.fh > 0 ? Math.round(lp.fh * h) : h;
-                child.measure(MeasureSpec.makeMeasureSpec(cw, MeasureSpec.EXACTLY),
-                        MeasureSpec.makeMeasureSpec(ch, MeasureSpec.EXACTLY));
+                child.measure(MeasureSpec.makeMeasureSpec(Math.max(0, cw), MeasureSpec.EXACTLY),
+                        MeasureSpec.makeMeasureSpec(Math.max(0, ch), MeasureSpec.EXACTLY));
             } else {
                 child.measure(MeasureSpec.makeMeasureSpec(w, MeasureSpec.AT_MOST),
                         MeasureSpec.makeMeasureSpec(h, MeasureSpec.AT_MOST));
@@ -62,6 +70,7 @@ public final class PlateLayout extends ViewGroup {
         int h = b - t;
         for (int i = 0; i < getChildCount(); i++) {
             View child = getChildAt(i);
+            if (child.getVisibility() == View.GONE) continue;
             ViewGroup.LayoutParams p = child.getLayoutParams();
             if (p instanceof LP) {
                 LP lp = (LP) p;
