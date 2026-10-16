@@ -59,3 +59,5 @@ jobs:
           name: TouchV-premium-debug-apk
           path: output/*.apk
           if-no-files-found: error
+
+# Rebuild Claude-provided ZIP for device testing
