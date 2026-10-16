@@ -92,6 +92,24 @@ public class MainActivity extends Activity {
         showTitle();
     }
 
+    // Do not advance AI turns while the game is backgrounded. Resume the
+    // current opponent's turn when the player returns to the table.
+    @Override
+    protected void onPause() {
+        if (screenTable != null) removeCallbacks(aiTurnRunnable);
+        super.onPause();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (engine != null && screenTable != null
+                && screenTable.getVisibility() == View.VISIBLE
+                && overlayScores != null && overlayScores.getVisibility() != View.VISIBLE) {
+            maybeRunAi();
+        }
+    }
+
     /** Built after attachBaseContext: a field initialiser would run with no context. */
     private GestureDetector createSwipeUp() {
         return new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
