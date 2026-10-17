@@ -78,7 +78,9 @@ jobs:
       - name: Upload report
         if: always()
         uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
           name: claude-assignment-report
           path: claude-report.txt
           if-no-files-found: ignore
+          retention-days: 3
