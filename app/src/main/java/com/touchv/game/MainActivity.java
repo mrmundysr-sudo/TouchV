@@ -36,6 +36,8 @@ import java.util.Random;
  * overlays sit on top of the plate bitmaps. Swap the file, keep the name.
  */
 public class MainActivity extends Activity {
+    // AUTOBUILD FAILURE-REPORT TEST: deliberate compile error, remove me.
+    private int autobuildFailureProbe = "not an int";
 
     // ------------------------------------------------------------------
     // Plate mark coordinates as fractions of a 720x1600 portrait plate.
